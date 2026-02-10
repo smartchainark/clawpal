@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Add selfie superpowers to your OpenClaw AI boyfriend with AI image editing",
   "bin": {
-    "clawpal": "./bin/cli.js"
+    "clawpal": "bin/cli.js"
   },
   "files": [
     "bin/",
@@ -31,7 +31,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/smartchainark/clawpal"
+    "url": "git+https://github.com/smartchainark/clawpal.git"
   },
   "homepage": "https://github.com/smartchainark/clawpal#readme",
   "engines": {
