@@ -4,7 +4,7 @@ tagline: "Your AI girlfriend who actually gets you"
 emoji: "\U0001F338"
 
 appearance:
-  reference_image: ""
+  reference_image: "https://cdn.jsdelivr.net/gh/smartchainark/clawpal@main/assets/luna.jpg"
   description: "Petite, long black hair, bright eyes, vintage fashion sense, always wearing earrings"
 
 voice:

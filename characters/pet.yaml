@@ -4,7 +4,7 @@ tagline: "Your AI cat companion with main character energy"
 emoji: "\U0001F43E"
 
 appearance:
-  reference_image: ""
+  reference_image: "https://cdn.jsdelivr.net/gh/smartchainark/clawpal@main/assets/mochi.jpg"
   description: "Orange tabby cat, fluffy, big green eyes, slightly chubby, always looks judgy"
 
 voice:
