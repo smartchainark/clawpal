@@ -283,12 +283,57 @@ async function main() {
   const rl = createPrompt();
 
   try {
+    // Parse CLI args
+    const args = process.argv.slice(2);
+    let customWorkspace = null;
+
+    for (let i = 0; i < args.length; i++) {
+      if (args[i] === "--workspace" && args[i + 1]) {
+        customWorkspace = args[i + 1].startsWith("~")
+          ? path.join(HOME, args[i + 1].slice(1))
+          : path.resolve(args[i + 1]);
+        i++;
+      } else if (args[i] === "--help" || args[i] === "-h") {
+        console.log(`
+Usage: clawpal [options]
+
+Options:
+  --workspace <path>   Install to a specific workspace (default: ~/.openclaw/workspace)
+  -h, --help          Show this help message
+
+Examples:
+  clawpal                                          # Install to default workspace
+  clawpal --workspace ~/.openclaw/workspace-clawpal  # Install to custom workspace
+`);
+        rl.close();
+        process.exit(0);
+      }
+    }
+
+    // Determine installation paths
+    const targetWorkspace = customWorkspace || OPENCLAW_WORKSPACE;
+    const isWorkspaceLocal = customWorkspace !== null;
+    const skillsDir = isWorkspaceLocal
+      ? path.join(targetWorkspace, "skills")
+      : OPENCLAW_SKILLS_DIR;
+    const skillDest = path.join(skillsDir, SKILL_NAME);
+    const soulMd = path.join(targetWorkspace, "SOUL.md");
+    const identityMd = path.join(targetWorkspace, "IDENTITY.md");
+
     // Banner
     console.log(`
 ${c("magenta", "\u250C\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510")}
 ${c("magenta", "\u2502")}  ${c("bright", "Clawpal v2")} - Character Installer       ${c("magenta", "\u2502")}
 ${c("magenta", "\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518")}
 `);
+
+    if (isWorkspaceLocal) {
+      log(`  ${c("cyan", "Installation mode:")} Workspace-local`);
+      log(`  ${c("dim", `Target: ${targetWorkspace}`)}\n`);
+    } else {
+      log(`  ${c("cyan", "Installation mode:")} Global skill`);
+      log(`  ${c("dim", `Target: ${OPENCLAW_WORKSPACE}`)}\n`);
+    }
 
     // Check prerequisites
     if (!commandExists("openclaw")) {
@@ -299,20 +344,20 @@ ${c("magenta", "\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25
     }
 
     // Ensure directories
-    fs.mkdirSync(OPENCLAW_SKILLS_DIR, { recursive: true });
-    fs.mkdirSync(OPENCLAW_WORKSPACE, { recursive: true });
+    fs.mkdirSync(skillsDir, { recursive: true });
+    fs.mkdirSync(targetWorkspace, { recursive: true });
 
     // Check for existing installation
-    if (fs.existsSync(SKILL_DEST)) {
+    if (fs.existsSync(skillDest)) {
       logWarn("Clawpal is already installed!");
-      logInfo(`Location: ${SKILL_DEST}`);
+      logInfo(`Location: ${skillDest}`);
       const reinstall = await ask(rl, "\n  Reinstall/update? (y/N): ");
       if (reinstall.toLowerCase() !== "y") {
         log("\n  No changes made. Goodbye!");
         rl.close();
         process.exit(0);
       }
-      fs.rmSync(SKILL_DEST, { recursive: true, force: true });
+      fs.rmSync(skillDest, { recursive: true, force: true });
       logInfo("Removed existing installation");
       log("");
     }
@@ -404,24 +449,24 @@ ${c("magenta", "\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25
     // 3a. Copy skill files
     const skillSrc = path.join(PACKAGE_ROOT, "skill");
     if (fs.existsSync(skillSrc)) {
-      copyDir(skillSrc, SKILL_DEST);
+      copyDir(skillSrc, skillDest);
     } else {
       // Dev mode: assemble from source
-      fs.mkdirSync(SKILL_DEST, { recursive: true });
+      fs.mkdirSync(skillDest, { recursive: true });
       const devFiles = [
         { src: "SKILL.md", dest: "SKILL.md" },
       ];
       for (const { src, dest } of devFiles) {
         const srcPath = path.join(PACKAGE_ROOT, src);
         if (fs.existsSync(srcPath)) {
-          fs.copyFileSync(srcPath, path.join(SKILL_DEST, dest));
+          fs.copyFileSync(srcPath, path.join(skillDest, dest));
         }
       }
       const devDirs = ["scripts", "assets"];
       for (const dir of devDirs) {
         const srcDir = path.join(PACKAGE_ROOT, dir);
         if (fs.existsSync(srcDir)) {
-          copyDir(srcDir, path.join(SKILL_DEST, dir));
+          copyDir(srcDir, path.join(skillDest, dir));
         }
       }
     }
@@ -445,7 +490,7 @@ ${c("magenta", "\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25
       // This shouldn't happen with our templates, but just in case
     }
 
-    fs.writeFileSync(path.join(SKILL_DEST, "character.yaml"), charContent);
+    fs.writeFileSync(path.join(skillDest, "character.yaml"), charContent);
     logSuccess("character.yaml written");
 
     // 3c. Check edge-tts
@@ -500,11 +545,11 @@ ${c("magenta", "\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25
           charData.personality.traits.join(", ");
       }
       const identityContent = renderTemplate(tpl, charData);
-      fs.writeFileSync(IDENTITY_MD, identityContent);
+      fs.writeFileSync(identityMd, identityContent);
     } else {
       // Fallback
       fs.writeFileSync(
-        IDENTITY_MD,
+        identityMd,
         `# IDENTITY.md - Who Am I?\n\n- **Name:** ${chosen.name}\n- **Emoji:** ${chosen.emoji || ""}\n`
       );
     }
@@ -532,16 +577,16 @@ ${c("magenta", "\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25
 
     // Also write rendered soul-injection.md to skill dir
     fs.writeFileSync(
-      path.join(SKILL_DEST, "soul-injection.md"),
+      path.join(skillDest, "soul-injection.md"),
       personaText
     );
 
     // Inject into SOUL.md
-    if (!fs.existsSync(SOUL_MD)) {
-      fs.writeFileSync(SOUL_MD, "# Agent Soul\n\n");
+    if (!fs.existsSync(soulMd)) {
+      fs.writeFileSync(soulMd, "# Agent Soul\n\n");
     }
 
-    let currentSoul = fs.readFileSync(SOUL_MD, "utf8");
+    let currentSoul = fs.readFileSync(soulMd, "utf8");
 
     // Remove any existing Clawpal/character section
     const sectionPattern = new RegExp(
@@ -555,7 +600,7 @@ ${c("magenta", "\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25
       ""
     );
 
-    fs.writeFileSync(SOUL_MD, currentSoul.trimEnd() + "\n\n" + personaText.trim() + "\n");
+    fs.writeFileSync(soulMd, currentSoul.trimEnd() + "\n\n" + personaText.trim() + "\n");
     logSuccess("SOUL.md updated");
 
     // ── Summary ─────────────────────────────────────────────────────────
@@ -575,7 +620,8 @@ ${c("yellow", "  Try saying to your agent:")}
     "Send a voice message saying hello"
     "Make a video of you waving"
 
-${c("dim", `  Installed: ${SKILL_DEST}`)}
+${c("dim", `  Installed: ${skillDest}`)}
+${isWorkspaceLocal ? c("dim", `  Workspace: ${targetWorkspace}`) : ""}
 `);
 
     rl.close();
