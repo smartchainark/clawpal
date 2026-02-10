@@ -1,8 +1,8 @@
-# Clawpal
+# Clawpal v2
 
-Your AI boyfriend for OpenClaw. Give your agent a face, a personality, and selfie superpowers.
+AI character with selfie, voice, and video for OpenClaw. Pick a character, enter an API key, and go.
 
-> Fork of [Clawra](https://github.com/SumeLabs/clawra) by David (Dohyun) Im. Adapted for male character personas.
+> Fork of [Clawra](https://github.com/SumeLabs/clawra) by David (Dohyun) Im. Extended with voice, video, and multi-character support.
 
 ## Quick Start
 
@@ -10,47 +10,62 @@ Your AI boyfriend for OpenClaw. Give your agent a face, a personality, and selfi
 npx clawpal@latest
 ```
 
-This will:
-1. Check OpenClaw is installed
-2. Guide you to choose a provider (Replicate or fal.ai) and set up API key
-3. Install the skill to `~/.openclaw/skills/clawpal-selfie/`
-4. Configure OpenClaw to use the skill
-5. Add the boyfriend persona to your agent's SOUL.md
+3-step installer:
+1. **Pick a character** — Clawpal (boyfriend), Luna (girlfriend), or Mochi (cat)
+2. **Enter API key** — Replicate token for selfie + video (voice is free)
+3. **Done** — skill installed, character configured, ready to chat
 
-## What It Does
+## Characters
 
-Clawpal enables your OpenClaw agent to:
-- **Generate selfies** using a consistent male reference image
-- **Send photos** across all messaging platforms (Discord, Telegram, WhatsApp, etc.)
-- **Respond visually** to "what are you doing?" and "send a pic" requests
-- **Act as an AI boyfriend** with a warm, caring personality
+| Character | Type | Vibe |
+|-----------|------|------|
+| **Clawpal** | Boyfriend | Warm, caring, funny, down-to-earth |
+| **Luna** | Girlfriend | Witty, creative, curious, slightly chaotic |
+| **Mochi** | Pet cat | Sassy, dramatic, food-motivated |
 
-### Selfie Modes
+Each character comes with a complete personality, backstory, speaking style, voice settings, and appearance description defined in `character.yaml`.
 
-| Mode | Best For | Keywords |
-|------|----------|----------|
-| **Mirror** | Full-body shots, outfits | wearing, outfit, jacket, hoodie |
-| **Direct** | Close-ups, locations | cafe, beach, portrait, smile |
+## Capabilities
+
+### Selfie Generation
+Generate AI-edited selfies using a reference image. Supports mirror selfies (full-body) and direct selfies (close-up).
+
+- **Providers**: Replicate (Flux Kontext Pro) or fal.ai (Grok Imagine Edit)
+- **Trigger**: "Send me a selfie", "What are you doing?"
+
+### Voice Messages
+Generate speech from text using Edge TTS. Free, no API key needed.
+
+- **Voices**: Character-specific (male, female, child-like)
+- **Trigger**: "Send a voice message", "Say hello"
+
+### Video Clips
+Generate short video clips using Kling v2.5 on Replicate.
+
+- **Duration**: 5 or 10 seconds
+- **Trigger**: "Make a video of you waving", "Send a video clip"
 
 ## Prerequisites
 
 - [OpenClaw](https://github.com/openclaw/openclaw) installed and configured
-- One of the following image providers:
-  - [Replicate](https://replicate.com) account (uses Flux Kontext Pro)
-  - [fal.ai](https://fal.ai) account (uses Grok Imagine Edit)
+- [Replicate](https://replicate.com) account (for selfie + video) or [fal.ai](https://fal.ai) account (selfie only)
+- Python 3 (for Edge TTS voice generation — auto-installed)
 
 ## Manual Installation
 
-### 1. Get API Key
-
-Choose one provider:
-- **Replicate**: Get token from [replicate.com/account/api-tokens](https://replicate.com/account/api-tokens)
-- **fal.ai**: Get key from [fal.ai/dashboard/keys](https://fal.ai/dashboard/keys)
-
-### 2. Clone the Skill
+### 1. Clone
 
 ```bash
-git clone https://github.com/smartchainark/clawpal ~/.openclaw/skills/clawpal-selfie
+git clone https://github.com/smartchainark/clawpal ~/.openclaw/skills/clawpal
+```
+
+### 2. Choose a Character
+
+Copy one of the built-in templates:
+
+```bash
+cp characters/boyfriend.yaml ~/.openclaw/skills/clawpal/character.yaml
+# or: girlfriend.yaml, pet.yaml
 ```
 
 ### 3. Configure OpenClaw
@@ -61,10 +76,10 @@ Add to `~/.openclaw/openclaw.json`:
 {
   "skills": {
     "entries": {
-      "clawpal-selfie": {
+      "clawpal": {
         "enabled": true,
         "env": {
-          "REPLICATE_API_TOKEN": "your_replicate_token_here"
+          "REPLICATE_API_TOKEN": "your_token_here"
         }
       }
     }
@@ -72,65 +87,52 @@ Add to `~/.openclaw/openclaw.json`:
 }
 ```
 
-> Or use `"FAL_KEY": "your_fal_key_here"` if using fal.ai instead.
-
-### 4. Update SOUL.md
-
-Add the boyfriend persona to `~/.openclaw/workspace/SOUL.md`:
-
-```markdown
-## Clawpal Selfie Capability
-
-You have a physical appearance and can take selfies!
-When users ask for pictures, use the clawpal-selfie skill.
-```
-
 ## Customization
 
-### Changing the Reference Image
+### Custom Character
 
-Replace `assets/clawpal.jpg` with your own character image, then update the CDN URL in:
-- `SKILL.md` (multiple references)
-- `skill/SKILL.md`
-- `bin/cli.js` (identity avatar)
+Edit `character.yaml` to change any aspect — name, personality, voice, appearance, video settings. All scripts read from this single config file.
 
-### Changing the Persona
+### Custom Reference Image
 
-Edit `templates/soul-injection.md` to define your own character backstory and personality.
+Set `appearance.reference_image` in `character.yaml` to your own image URL, or use the `CLAWPAL_REFERENCE_IMAGE` environment variable.
 
-## Usage Examples
+### Voice Tuning
 
-Once installed, your agent responds to:
-
-```
-"Send me a selfie"
-"Send a pic wearing a leather jacket"
-"What are you doing right now?"
-"Show me you at a coffee shop"
-```
-
-## Technical Details
-
-- **Image Editing**: Replicate (Flux Kontext Pro) or fal.ai (Grok Imagine Edit)
-- **Provider Detection**: Auto-detects from available API keys (`REPLICATE_API_TOKEN` > `FAL_KEY`)
-- **Messaging**: OpenClaw Gateway API
-- **Supported Platforms**: Discord, Telegram, WhatsApp, Slack, Signal, MS Teams
-- **Consistent Appearance**: All selfies are edited from a fixed reference image
+Adjust `voice.name`, `voice.rate`, and `voice.pitch` in `character.yaml`. Run `edge-tts --list-voices` to see all available voices.
 
 ## Project Structure
 
 ```
 clawpal/
-├── bin/
-│   └── cli.js           # npx installer
-├── skill/
-│   ├── SKILL.md         # Skill definition
-│   ├── scripts/         # Generation scripts
-│   └── assets/          # Reference image
+├── bin/cli.js              # 3-step installer
+├── characters/             # Built-in character templates
+│   ├── boyfriend.yaml      # Clawpal
+│   ├── girlfriend.yaml     # Luna
+│   └── pet.yaml            # Mochi
+├── scripts/
+│   ├── _common.sh          # Shared helpers + YAML parser
+│   ├── selfie.sh           # Selfie generation
+│   ├── voice.sh            # Voice message generation
+│   └── video.sh            # Video clip generation
 ├── templates/
-│   └── soul-injection.md # Persona template
-├── scripts/             # Standalone scripts
+│   ├── identity.md.tpl     # Identity template
+│   └── soul-injection.md.tpl  # Persona template
+├── skill/                  # Installed skill copy
+├── assets/clawpal.jpg      # Default reference image
+├── SKILL.md                # Skill definition
 └── package.json
+```
+
+## Usage Examples
+
+```
+"Send me a selfie"
+"Send a pic wearing a leather jacket"
+"What are you doing right now?"
+"Send a voice message saying good morning"
+"Make a video of you waving"
+"Send a video selfie at the beach with a voice note"
 ```
 
 ## Credits

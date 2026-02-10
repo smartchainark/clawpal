@@ -1,7 +1,7 @@
 {
   "name": "clawpal",
-  "version": "1.0.0",
-  "description": "Add selfie superpowers to your OpenClaw AI boyfriend with AI image editing",
+  "version": "2.0.0",
+  "description": "AI character with selfie, voice, and video for OpenClaw",
   "bin": {
     "clawpal": "bin/cli.js"
   },
@@ -9,21 +9,24 @@
     "bin/",
     "skill/",
     "templates/",
+    "characters/",
     "SKILL.md",
     "scripts/",
     "assets/"
   ],
   "keywords": [
     "openclaw",
-    "grok",
-    "imagine",
-    "xai",
-    "fal.ai",
     "replicate",
     "flux-kontext",
+    "edge-tts",
+    "kling",
     "selfie",
+    "voice",
+    "video",
     "ai-agent",
     "ai-boyfriend",
+    "ai-girlfriend",
+    "character",
     "image-editing",
     "messaging"
   ],
@@ -38,10 +41,5 @@
     "node": ">=18.0.0"
   },
   "dependencies": {},
-  "devDependencies": {
-    "@fal-ai/client": "^1.2.0",
-    "@types/node": "^22.0.0",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.7.0"
-  }
+  "devDependencies": {}
 }
