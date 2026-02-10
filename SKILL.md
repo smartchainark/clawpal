@@ -8,6 +8,22 @@ allowed-tools: Bash(edge-tts:*) Bash(pip3:*) Bash(curl:*) Bash(openclaw:*) Read
 
 AI character skill with selfie generation, voice messages, and video clips. All capabilities are driven by `character.yaml` — a single file that defines the character's appearance, voice, personality, and media settings.
 
+## Setup
+
+### Environment Variables
+
+API keys are loaded from `.env` file in the skill directory:
+
+```bash
+# .env
+REPLICATE_API_TOKEN="r8_your_token_here"  # For selfie + video
+FAL_KEY="your_fal_key_here"                # Alternative for selfie only
+```
+
+The installer creates this file automatically. For manual setup, copy `.env.example` to `.env` and add your keys.
+
+**Note:** Scripts automatically load `.env` — no need to set system environment variables.
+
 ## Character Config
 
 The file `character.yaml` (in the skill directory) defines everything about the character:

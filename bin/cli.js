@@ -493,26 +493,39 @@ ${c("magenta", "\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25
     fs.writeFileSync(path.join(skillDest, "character.yaml"), charContent);
     logSuccess("character.yaml written");
 
-    // 3c. Check edge-tts
+    // 3c. Create .env file with API keys
+    if (replicateKey || falKey) {
+      const envLines = ["# Clawpal v2 Environment Configuration", ""];
+      if (replicateKey) {
+        envLines.push("# Replicate API Token (for selfie + video)");
+        envLines.push(`REPLICATE_API_TOKEN="${replicateKey}"`);
+        envLines.push("");
+      }
+      if (falKey) {
+        envLines.push("# fal.ai API Key (for selfie)");
+        envLines.push(`FAL_KEY="${falKey}"`);
+        envLines.push("");
+      }
+      const envPath = path.join(skillDest, ".env");
+      fs.writeFileSync(envPath, envLines.join("\n"));
+      logSuccess(".env file created with API keys");
+    }
+
+    // 3d. Check edge-tts
     if (commandExists("edge-tts") || commandExists("python3")) {
       logSuccess("Edge TTS ready");
     } else {
       logWarn("edge-tts will be auto-installed on first voice message");
     }
 
-    // 3d. Update OpenClaw config
+    // 3e. Update OpenClaw config
     let config = readJsonFile(OPENCLAW_CONFIG) || {};
-
-    const env = {};
-    if (replicateKey) env.REPLICATE_API_TOKEN = replicateKey;
-    if (falKey) env.FAL_KEY = falKey;
 
     const skillConfig = {
       skills: {
         entries: {
           [SKILL_NAME]: {
             enabled: true,
-            ...(Object.keys(env).length > 0 ? { env } : {}),
           },
         },
       },
