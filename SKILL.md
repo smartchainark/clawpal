@@ -163,9 +163,8 @@ Voices are configured per-character in `character.yaml`:
 ### Flow
 
 1. Read voice config from `character.yaml`
-2. Generate MP3 via `edge-tts`
-3. Upload to `0x0.st` for public URL (fallback: `transfer.sh`)
-4. Send via OpenClaw
+2. Generate MP3 via `edge-tts` to `/tmp/`
+3. Send local file directly via OpenClaw (no upload needed)
 
 ### Dependencies
 
@@ -174,9 +173,9 @@ Voices are configured per-character in `character.yaml`:
 
 ## Video Clips
 
-**Script:** `scripts/video.sh "<prompt>" ["<source_image>"] ["<duration>"]`
+**Script:** `scripts/video.sh "<prompt>" "<channel>" ["<caption>"] ["<source_image>"] ["<duration>"]`
 
-Generate short video clips using Kling v2.5 on Replicate. Returns JSON with `video_url`.
+Generate short video clips using Kling v2.6 on Replicate and send to the specified channel.
 
 ### Configuration
 

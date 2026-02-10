@@ -184,6 +184,20 @@ detect_provider() {
     exit 1
 }
 
+# Parse channel format: "platform:target" or just "target"
+# Usage: parse_channel "<channel_string>"
+# Returns: OPENCLAW_PLATFORM and OPENCLAW_TARGET as exported variables
+parse_channel() {
+    local channel="$1"
+    if [[ "$channel" =~ ^([a-z]+):(.+)$ ]]; then
+        export OPENCLAW_PLATFORM="${BASH_REMATCH[1]}"
+        export OPENCLAW_TARGET="${BASH_REMATCH[2]}"
+    else
+        export OPENCLAW_PLATFORM=""
+        export OPENCLAW_TARGET="$channel"
+    fi
+}
+
 # Retry a curl command on failure
 # Usage: retry_curl <max_retries> <curl_args...>
 retry_curl() {

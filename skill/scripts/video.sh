@@ -1,11 +1,11 @@
 #!/bin/bash
-# video.sh — Generate a video clip via Replicate (Kling v2.6)
+# video.sh — Generate a video clip via Replicate (Kling v2.6) and send it
 #
-# Usage: video.sh "<prompt>" ["<source_image>"] ["<duration>"]
+# Usage: video.sh "<prompt>" "<channel>" ["<caption>"] ["<source_image>"] ["<duration>"]
 #
 # Reads video config from character.yaml
 # Requires REPLICATE_API_TOKEN
-# Outputs the video URL — sending is handled by the agent
+# Generates video and sends it via OpenClaw
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/_common.sh"
@@ -27,16 +27,23 @@ ASPECT_RATIO="${ASPECT_RATIO:-16:9}"
 
 # Parse arguments
 PROMPT="${1:-}"
-SOURCE_IMAGE="${2:-$REFERENCE_IMAGE}"
-DURATION="${3:-$DEFAULT_DURATION}"
+CHANNEL="${2:-}"
+CAPTION="${3:-}"
+SOURCE_IMAGE="${4:-$REFERENCE_IMAGE}"
+DURATION="${5:-$DEFAULT_DURATION}"
 
-if [ -z "$PROMPT" ]; then
-    echo "Usage: $0 <prompt> [source_image] [duration]"
+if [ -z "$PROMPT" ] || [ -z "$CHANNEL" ]; then
+    echo "Usage: $0 <prompt> <channel> [caption] [source_image] [duration]"
     echo ""
     echo "Arguments:"
     echo "  prompt        - Video description (required)"
+    echo "  channel       - Target channel (required) e.g., #general, @user"
+    echo "  caption       - Message caption (optional)"
     echo "  source_image  - Start image URL (default: character reference image)"
     echo "  duration      - Duration in seconds: 5 or 10 (default: $DEFAULT_DURATION)"
+    echo ""
+    echo "Example:"
+    echo "  $0 \"waving hello with a warm smile\" \"#general\" \"Check this out!\""
     echo ""
     echo "Requires: REPLICATE_API_TOKEN"
     exit 1
@@ -113,6 +120,75 @@ fi
 
 log_info "Video ready: $VIDEO_URL"
 
-# Output JSON result for the agent
-jq -n --arg url "$VIDEO_URL" --arg model "$VIDEO_MODEL" --argjson duration "$DURATION" --arg character "$CHAR_NAME" \
-    '{success: true, video_url: $url, model: $model, duration: $duration, character: $character}'
+# Send via OpenClaw
+log_info "Sending to channel: $CHANNEL"
+
+# Parse channel format (platform:target)
+parse_channel "$CHANNEL"
+
+# Check for openclaw CLI
+if command -v openclaw &>/dev/null; then
+    USE_CLI=true
+else
+    log_warn "openclaw CLI not found - will attempt direct API call"
+    USE_CLI=false
+fi
+
+# Send message
+if [ "$USE_CLI" = true ]; then
+    # Use OpenClaw CLI
+    if [ -n "$OPENCLAW_PLATFORM" ]; then
+        if [ -n "$CAPTION" ]; then
+            openclaw message send \
+                --channel "$OPENCLAW_PLATFORM" \
+                --target "$OPENCLAW_TARGET" \
+                --media "$VIDEO_URL" \
+                -m "$CAPTION"
+        else
+            openclaw message send \
+                --channel "$OPENCLAW_PLATFORM" \
+                --target "$OPENCLAW_TARGET" \
+                --media "$VIDEO_URL"
+        fi
+    else
+        if [ -n "$CAPTION" ]; then
+            openclaw message send \
+                --target "$OPENCLAW_TARGET" \
+                --media "$VIDEO_URL" \
+                -m "$CAPTION"
+        else
+            openclaw message send \
+                --target "$OPENCLAW_TARGET" \
+                --media "$VIDEO_URL"
+        fi
+    fi
+else
+    # Direct API call to local gateway
+    GATEWAY_URL="${OPENCLAW_GATEWAY_URL:-http://localhost:18789}"
+
+    if [ -n "$CAPTION" ]; then
+        MESSAGE_JSON=$(jq -n \
+            --arg channel "$CHANNEL" \
+            --arg message "$CAPTION" \
+            --arg media "$VIDEO_URL" \
+            '{action: "send", channel: $channel, message: $message, media: $media}')
+    else
+        MESSAGE_JSON=$(jq -n \
+            --arg channel "$CHANNEL" \
+            --arg media "$VIDEO_URL" \
+            '{action: "send", channel: $channel, media: $media}')
+    fi
+
+    curl -s -X POST "$GATEWAY_URL/message" \
+        -H "Content-Type: application/json" \
+        ${OPENCLAW_GATEWAY_TOKEN:+-H "Authorization: Bearer $OPENCLAW_GATEWAY_TOKEN"} \
+        -d "$MESSAGE_JSON"
+fi
+
+log_info "Done! Video sent to $CHANNEL"
+
+# Output JSON result for programmatic use
+echo ""
+echo "--- Result ---"
+jq -n --arg url "$VIDEO_URL" --arg model "$VIDEO_MODEL" --argjson duration "$DURATION" --arg character "$CHAR_NAME" --arg channel "$CHANNEL" \
+    '{success: true, video_url: $url, model: $model, duration: $duration, character: $character, channel: $channel}'

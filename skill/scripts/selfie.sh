@@ -1,11 +1,11 @@
 #!/bin/bash
-# selfie.sh — Generate a selfie via AI image editing
+# selfie.sh — Generate a selfie via AI image editing and send it
 #
-# Usage: selfie.sh "<context>" ["<mode>"]
+# Usage: selfie.sh "<context>" "<channel>" ["<mode>"] ["<caption>"]
 #
 # Reads appearance.reference_image and image.provider from character.yaml
 # Supports Replicate (Flux Kontext Pro) and fal.ai (Grok Imagine Edit)
-# Outputs the image URL — sending is handled by the agent
+# Generates image and sends it via OpenClaw
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/_common.sh"
@@ -27,14 +27,21 @@ PROVIDER=$(detect_provider)
 
 # Parse arguments
 USER_CONTEXT="${1:-}"
-MODE="${2:-auto}"
+CHANNEL="${2:-}"
+MODE="${3:-auto}"
+CAPTION="${4:-}"
 
-if [ -z "$USER_CONTEXT" ]; then
-    echo "Usage: $0 <context> [mode]"
+if [ -z "$USER_CONTEXT" ] || [ -z "$CHANNEL" ]; then
+    echo "Usage: $0 <context> <channel> [mode] [caption]"
     echo ""
     echo "Arguments:"
     echo "  context  - Scene description (required)"
+    echo "  channel  - Target channel (required) e.g., #general, @user"
     echo "  mode     - mirror, direct, or auto (default: auto)"
+    echo "  caption  - Message caption (optional)"
+    echo ""
+    echo "Example:"
+    echo "  $0 \"at a cozy cafe\" \"#general\" auto \"Check this out!\""
     exit 1
 fi
 
@@ -129,6 +136,75 @@ fi
 
 log_info "Image ready: $IMAGE_URL"
 
-# Output JSON result for the agent
-jq -n --arg url "$IMAGE_URL" --arg mode "$MODE" --arg provider "$PROVIDER" --arg character "$CHAR_NAME" \
-    '{success: true, image_url: $url, mode: $mode, provider: $provider, character: $character}'
+# Send via OpenClaw
+log_info "Sending to channel: $CHANNEL"
+
+# Parse channel format (platform:target)
+parse_channel "$CHANNEL"
+
+# Check for openclaw CLI
+if command -v openclaw &>/dev/null; then
+    USE_CLI=true
+else
+    log_warn "openclaw CLI not found - will attempt direct API call"
+    USE_CLI=false
+fi
+
+# Send message
+if [ "$USE_CLI" = true ]; then
+    # Use OpenClaw CLI
+    if [ -n "$OPENCLAW_PLATFORM" ]; then
+        if [ -n "$CAPTION" ]; then
+            openclaw message send \
+                --channel "$OPENCLAW_PLATFORM" \
+                --target "$OPENCLAW_TARGET" \
+                --media "$IMAGE_URL" \
+                -m "$CAPTION"
+        else
+            openclaw message send \
+                --channel "$OPENCLAW_PLATFORM" \
+                --target "$OPENCLAW_TARGET" \
+                --media "$IMAGE_URL"
+        fi
+    else
+        if [ -n "$CAPTION" ]; then
+            openclaw message send \
+                --target "$OPENCLAW_TARGET" \
+                --media "$IMAGE_URL" \
+                -m "$CAPTION"
+        else
+            openclaw message send \
+                --target "$OPENCLAW_TARGET" \
+                --media "$IMAGE_URL"
+        fi
+    fi
+else
+    # Direct API call to local gateway
+    GATEWAY_URL="${OPENCLAW_GATEWAY_URL:-http://localhost:18789}"
+
+    if [ -n "$CAPTION" ]; then
+        MESSAGE_JSON=$(jq -n \
+            --arg channel "$CHANNEL" \
+            --arg message "$CAPTION" \
+            --arg media "$IMAGE_URL" \
+            '{action: "send", channel: $channel, message: $message, media: $media}')
+    else
+        MESSAGE_JSON=$(jq -n \
+            --arg channel "$CHANNEL" \
+            --arg media "$IMAGE_URL" \
+            '{action: "send", channel: $channel, media: $media}')
+    fi
+
+    curl -s -X POST "$GATEWAY_URL/message" \
+        -H "Content-Type: application/json" \
+        ${OPENCLAW_GATEWAY_TOKEN:+-H "Authorization: Bearer $OPENCLAW_GATEWAY_TOKEN"} \
+        -d "$MESSAGE_JSON"
+fi
+
+log_info "Done! Image sent to $CHANNEL"
+
+# Output JSON result for programmatic use
+echo ""
+echo "--- Result ---"
+jq -n --arg url "$IMAGE_URL" --arg mode "$MODE" --arg provider "$PROVIDER" --arg character "$CHAR_NAME" --arg channel "$CHANNEL" \
+    '{success: true, image_url: $url, mode: $mode, provider: $provider, character: $character, channel: $channel}'
