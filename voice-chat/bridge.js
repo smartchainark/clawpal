@@ -23,8 +23,10 @@ const CONFIG = {
     WS_PORT: 8765,
     SNAPSHOT_DIR: '/tmp/clawpal-snapshots',
     OPENCLAW_GATEWAY: 'http://localhost:18789',
-    TELEGRAM_CHANNEL: process.env.CLAWPAL_CHANNEL || '#general', // 从环境变量读取
+    TELEGRAM_CHANNEL: process.env.CLAWPAL_CHANNEL || '#general',
     SKILL_DIR: path.join(process.env.HOME, '.openclaw/skills/clawpal'),
+    AGENT_TARGET: process.env.CLAWPAL_CHANNEL || '#general', // Agent 目标频道
+    AGENT_TIMEOUT: 60, // Agent 超时时间（秒）
 };
 
 // 确保目录存在
@@ -33,7 +35,33 @@ if (!fs.existsSync(CONFIG.SNAPSHOT_DIR)) {
 }
 
 // 创建 HTTP 服务器和 WebSocket 服务器
-const server = http.createServer();
+const server = http.createServer((req, res) => {
+    // 处理 /media/ 路由，提供音频文件
+    if (req.url.startsWith('/media/')) {
+        const filename = path.basename(req.url);
+        const filepath = path.join('/tmp', filename);
+
+        console.log(`📥 HTTP 请求: ${req.url} → ${filepath}`);
+
+        if (fs.existsSync(filepath)) {
+            res.writeHead(200, {
+                'Content-Type': 'audio/mpeg',
+                'Access-Control-Allow-Origin': '*'
+            });
+            fs.createReadStream(filepath).pipe(res);
+            console.log(`✅ 文件已发送: ${filename}`);
+        } else {
+            console.log(`❌ 文件不存在: ${filepath}`);
+            res.writeHead(404, { 'Content-Type': 'text/plain' });
+            res.end('File not found');
+        }
+    } else {
+        // 其他请求返回 404
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end('Not found');
+    }
+});
+
 const wss = new WebSocket.Server({ server });
 
 console.log(`🚀 Clawpal Video Bridge 启动中...`);
@@ -48,7 +76,9 @@ wss.on('connection', (ws) => {
         try {
             const message = JSON.parse(data);
 
-            if (message.type === 'snapshot') {
+            if (message.type === 'voice') {
+                await handleVoiceMessage(ws, message);
+            } else if (message.type === 'snapshot') {
                 await handleSnapshot(ws, message);
             } else if (message.type === 'ping') {
                 ws.send(JSON.stringify({ type: 'pong' }));
@@ -73,6 +103,94 @@ wss.on('connection', (ws) => {
         message: 'Clawpal Video Bridge 已就绪'
     }));
 });
+
+// 处理语音消息
+async function handleVoiceMessage(ws, message) {
+    const userText = message.text || message.transcript;
+    console.log(`💬 收到文字消息: ${userText}`);
+
+    // 通知前端开始处理
+    ws.send(JSON.stringify({
+        type: 'processing',
+        message: 'Clawpal 正在思考...'
+    }));
+
+    try {
+        // 调用 OpenClaw agent
+        const agentMessage = `send a voice message: ${userText}`;
+        const cmd = `openclaw agent --to "${CONFIG.AGENT_TARGET}" --message "${agentMessage}" --json --timeout ${CONFIG.AGENT_TIMEOUT}`;
+
+        console.log(`🤖 执行: ${cmd}`);
+
+        exec(cmd, (error, stdout, stderr) => {
+            if (error) {
+                console.error('❌ Agent 调用失败:', error.message);
+                console.error('stderr:', stderr);
+                ws.send(JSON.stringify({
+                    type: 'error',
+                    message: `Agent 调用失败: ${error.message}`
+                }));
+                return;
+            }
+
+            try {
+                const result = JSON.parse(stdout.trim());
+                console.log('✅ Agent 响应:', JSON.stringify(result, null, 2));
+
+                if (result.status === 'ok' && result.result?.payloads) {
+                    const payloads = result.result.payloads;
+
+                    for (const payload of payloads) {
+                        if (payload.text) {
+                            // 提取音频路径（格式：MEDIA: /tmp/xxx.mp3）
+                            const mediaMatch = payload.text.match(/MEDIA:\s*(.+?)$/m);
+                            if (mediaMatch) {
+                                const localPath = mediaMatch[1].trim();
+                                const filename = path.basename(localPath);
+                                const audioUrl = `http://localhost:${CONFIG.WS_PORT}/media/${filename}`;
+
+                                console.log(`🔊 语音文件: ${localPath} → ${audioUrl}`);
+
+                                // 返回语音消息
+                                ws.send(JSON.stringify({
+                                    type: 'voice',
+                                    text: payload.text.replace(/MEDIA:.+$/m, '').trim() || 'AI 语音回复',
+                                    audioUrl: audioUrl
+                                }));
+                            } else {
+                                // 纯文字回复
+                                ws.send(JSON.stringify({
+                                    type: 'message',
+                                    text: payload.text
+                                }));
+                            }
+                        }
+                    }
+                } else {
+                    ws.send(JSON.stringify({
+                        type: 'error',
+                        message: 'Agent 未返回有效结果'
+                    }));
+                }
+
+            } catch (parseErr) {
+                console.error('❌ 解析 Agent 输出失败:', parseErr.message);
+                console.error('stdout:', stdout);
+                ws.send(JSON.stringify({
+                    type: 'error',
+                    message: `解析失败: ${parseErr.message}`
+                }));
+            }
+        });
+
+    } catch (err) {
+        console.error('❌ 处理失败:', err);
+        ws.send(JSON.stringify({
+            type: 'error',
+            message: `处理失败: ${err.message}`
+        }));
+    }
+}
 
 // 处理截图
 async function handleSnapshot(ws, message) {
