@@ -1,0 +1,46 @@
+{
+  "name": "clawpal",
+  "version": "1.0.0",
+  "description": "Add selfie superpowers to your OpenClaw AI boyfriend using xAI Grok Imagine",
+  "bin": {
+    "clawpal": "./bin/cli.js"
+  },
+  "files": [
+    "bin/",
+    "skill/",
+    "templates/",
+    "SKILL.md",
+    "scripts/",
+    "assets/"
+  ],
+  "keywords": [
+    "openclaw",
+    "grok",
+    "imagine",
+    "xai",
+    "aurora",
+    "fal.ai",
+    "selfie",
+    "ai-agent",
+    "ai-boyfriend",
+    "image-generation",
+    "messaging"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/user/clawpal"
+  },
+  "homepage": "https://github.com/user/clawpal#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@fal-ai/client": "^1.2.0",
+    "@types/node": "^22.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.0"
+  }
+}
