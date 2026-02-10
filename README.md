@@ -46,7 +46,7 @@ Visit [fal.ai/dashboard/keys](https://fal.ai/dashboard/keys) and create an API k
 ### 2. Clone the Skill
 
 ```bash
-git clone https://github.com/user/clawpal ~/.openclaw/skills/clawpal-selfie
+git clone https://github.com/smartchainark/clawpal ~/.openclaw/skills/clawpal-selfie
 ```
 
 ### 3. Configure OpenClaw

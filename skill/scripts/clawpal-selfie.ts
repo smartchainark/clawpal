@@ -19,7 +19,7 @@ const execAsync = promisify(exec);
 // Default reference image (override via CLAWPAL_REFERENCE_IMAGE env var)
 const REFERENCE_IMAGE =
   process.env.CLAWPAL_REFERENCE_IMAGE ||
-  "https://cdn.jsdelivr.net/gh/user/clawpal@main/assets/clawpal.png";
+  "https://cdn.jsdelivr.net/gh/smartchainark/clawpal@main/assets/clawpal.png";
 
 // Types
 interface GrokImagineEditInput {

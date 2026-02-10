@@ -42,7 +42,7 @@ else
 fi
 
 # Fixed reference image (override via env var)
-REFERENCE_IMAGE="${CLAWPAL_REFERENCE_IMAGE:-https://cdn.jsdelivr.net/gh/user/clawpal@main/assets/clawpal.png}"
+REFERENCE_IMAGE="${CLAWPAL_REFERENCE_IMAGE:-https://cdn.jsdelivr.net/gh/smartchainark/clawpal@main/assets/clawpal.png}"
 
 # Parse arguments
 USER_CONTEXT="${1:-}"

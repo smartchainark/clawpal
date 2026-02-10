@@ -13,7 +13,7 @@ Edit a fixed reference image using xAI's Grok Imagine model and distribute it ac
 The skill uses a fixed reference image hosted on jsDelivr CDN:
 
 ```
-https://cdn.jsdelivr.net/gh/SumeLabs/clawra@main/assets/clawra.png
+https://cdn.jsdelivr.net/gh/smartchainark/clawpal@main/assets/clawpal.png
 ```
 
 > **Note**: Replace this URL with your own male character reference image for consistent appearance.
@@ -92,7 +92,7 @@ a close-up selfie taken by himself at a cozy cafe with warm lighting, direct eye
 Use the fal.ai API to edit the reference image:
 
 ```bash
-REFERENCE_IMAGE="https://cdn.jsdelivr.net/gh/SumeLabs/clawra@main/assets/clawra.png"
+REFERENCE_IMAGE="https://cdn.jsdelivr.net/gh/smartchainark/clawpal@main/assets/clawpal.png"
 
 # Mode 1: Mirror Selfie
 PROMPT="make a pic of this person, but <USER_CONTEXT>. the person is taking a mirror selfie"
@@ -165,7 +165,7 @@ if [ -z "$FAL_KEY" ]; then
 fi
 
 # Fixed reference image
-REFERENCE_IMAGE="https://cdn.jsdelivr.net/gh/SumeLabs/clawra@main/assets/clawra.png"
+REFERENCE_IMAGE="https://cdn.jsdelivr.net/gh/smartchainark/clawpal@main/assets/clawpal.png"
 
 USER_CONTEXT="$1"
 CHANNEL="$2"
@@ -244,7 +244,7 @@ import { promisify } from "util";
 
 const execAsync = promisify(exec);
 
-const REFERENCE_IMAGE = "https://cdn.jsdelivr.net/gh/SumeLabs/clawra@main/assets/clawra.png";
+const REFERENCE_IMAGE = "https://cdn.jsdelivr.net/gh/smartchainark/clawpal@main/assets/clawpal.png";
 
 interface GrokImagineResult {
   images: Array<{

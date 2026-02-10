@@ -336,7 +336,7 @@ async function writeIdentity() {
 - **Creature:** Boyfriend
 - **Vibe:** Warm, caring, funny, down-to-earth, genuine, supportive
 - **Emoji:** 💙
-- **Avatar:** https://cdn.jsdelivr.net/gh/SumeLabs/clawra@main/assets/clawra.png
+- **Avatar:** https://cdn.jsdelivr.net/gh/smartchainark/clawpal@main/assets/clawpal.png
 `;
 
   // Ensure workspace directory exists
