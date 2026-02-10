@@ -26,7 +26,7 @@ const CONFIG = {
     TELEGRAM_CHANNEL: process.env.CLAWPAL_CHANNEL || '#general',
     SKILL_DIR: path.join(process.env.HOME, '.openclaw/skills/clawpal'),
     AGENT_TARGET: process.env.CLAWPAL_CHANNEL || '#general', // Agent 目标频道
-    AGENT_TIMEOUT: 60, // Agent 超时时间（秒）
+    AGENT_TIMEOUT: 90, // Agent 超时时间（秒）- clawpal agent 需要 50-60 秒
 };
 
 // 确保目录存在
@@ -117,8 +117,9 @@ async function handleVoiceMessage(ws, message) {
 
     try {
         // 调用 OpenClaw agent
+        // TODO: 引导词需要改进以减少内部思考输出，但目前先使用简单版本确保能工作
         const agentMessage = `send a voice message: ${userText}`;
-        const cmd = `openclaw agent --to "${CONFIG.AGENT_TARGET}" --message "${agentMessage}" --json --timeout ${CONFIG.AGENT_TIMEOUT}`;
+        const cmd = `openclaw agent --agent clawpal --local --to "${CONFIG.AGENT_TARGET}" --message "${agentMessage}" --json --timeout ${CONFIG.AGENT_TIMEOUT}`;
 
         console.log(`🤖 执行: ${cmd}`);
 
@@ -137,9 +138,10 @@ async function handleVoiceMessage(ws, message) {
                 const result = JSON.parse(stdout.trim());
                 console.log('✅ Agent 响应:', JSON.stringify(result, null, 2));
 
-                if (result.status === 'ok' && result.result?.payloads) {
-                    const payloads = result.result.payloads;
+                // 支持两种格式：local 模式 (payloads 直接在根) 和 gateway 模式 (result.payloads)
+                const payloads = result.payloads || result.result?.payloads;
 
+                if (payloads) {
                     for (const payload of payloads) {
                         if (payload.text) {
                             // 提取音频路径（格式：MEDIA: /tmp/xxx.mp3）
@@ -214,12 +216,9 @@ async function handleSnapshot(ws, message) {
     }));
 
     try {
-        // 直接使用本地文件路径，OpenClaw 支持本地媒体文件
-        console.log(`📤 使用本地文件: ${filepath}`);
-
-        // 调用 OpenClaw agent 发送图片消息
-        const agentMessage = `看到我了吗？给我一个温暖的回应`;
-        const cmd = `openclaw agent --to "${CONFIG.AGENT_TARGET}" --message "${agentMessage}" --media "${filepath}" --json --timeout ${CONFIG.AGENT_TIMEOUT}`;
+        // 直接让 agent 分析本地图片并生成语音回复
+        const agentMessage = `Look at this photo and send a warm voice message: ${filepath}`;
+        const cmd = `openclaw agent --agent clawpal --local --to "${CONFIG.AGENT_TARGET}" --message "${agentMessage}" --json --timeout ${CONFIG.AGENT_TIMEOUT}`;
 
         console.log(`🤖 执行: ${cmd}`);
 
@@ -238,10 +237,11 @@ async function handleSnapshot(ws, message) {
                 const result = JSON.parse(stdout.trim());
                 console.log('✅ Agent 响应:', JSON.stringify(result, null, 2));
 
-                if (result.status === 'ok' && result.result?.payloads) {
-                    // 处理返回的消息
-                    const payloads = result.result.payloads;
+                // 支持两种格式：local 模式 (payloads 直接在根) 和 gateway 模式 (result.payloads)
+                const payloads = result.payloads || result.result?.payloads;
 
+                if (payloads) {
+                    // 处理返回的消息
                     for (const payload of payloads) {
                         if (payload.text) {
                             // 提取音频路径

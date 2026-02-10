@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>与 Chiffon 的私密空间 💕</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-pink: #FFE5EC;
+            --primary-purple: #C7A4E8;
+            --accent-rose: #FFB4A2;
+            --deep-purple: #1A0E2E;
+            --soft-lavender: #D4A5F4;
+            --glass-bg: rgba(255, 255, 255, 0.08);
+            --glass-border: rgba(255, 255, 255, 0.18);
+            --font-display: 'Cormorant Garamond', serif;
+            --font-body: 'Manrope', sans-serif;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--deep-purple);
+            color: white;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* 背景层 */
+        .background-layer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .background-media {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: blur(40px) brightness(0.4);
+            transform: scale(1.1);
+            animation: slowZoom 30s infinite alternate;
+        }
+
+        @keyframes slowZoom {
+            0% { transform: scale(1.1); }
+            100% { transform: scale(1.2); }
+        }
+
+        .background-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg,
+                rgba(255, 229, 236, 0.15) 0%,
+                rgba(199, 164, 232, 0.15) 50%,
+                rgba(255, 180, 162, 0.15) 100%);
+        }
+
+        /* 主容器：两栏布局 */
+        .main-container {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: 1fr 420px;
+            height: 100vh;
+            gap: 0;
+        }
+
+        /* 左侧：对话区 */
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+            animation: fadeIn 0.8s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* 顶部栏：包含状态和导航按钮 */
+        .chat-header {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            padding: 20px 32px 16px;
+        }
+
+        /* 基本信息行 */
+        .header-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .chat-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: 2px solid var(--accent-rose);
+            object-fit: cover;
+        }
+
+        .chat-info {
+            flex: 1;
+        }
+
+        .chat-name {
+            font-family: var(--font-display);
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .chat-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .status-indicator {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #4CAF50;
+            animation: blink 2s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* 主导航标签 */
+        .media-tabs {
+            display: flex;
+            gap: 10px;
+        }
+
+        .media-tab {
+            flex: 1;
+            padding: 12px 20px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid var(--glass-border);
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+
+        .media-tab:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: var(--accent-rose);
+            transform: translateY(-2px);
+        }
+
+        .media-tab.active {
+            background: linear-gradient(135deg, var(--accent-rose), var(--soft-lavender));
+            border-color: transparent;
+            color: white;
+            box-shadow: 0 4px 16px rgba(255, 180, 162, 0.4);
+        }
+
+        /* 消息区域 */
+        .messages-container {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .messages-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .messages-container::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+
+        .messages-container::-webkit-scrollbar-thumb {
+            background: var(--accent-rose);
+            border-radius: 10px;
+        }
+
+        .message {
+            display: flex;
+            gap: 10px;
+            animation: messageSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes messageSlideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-bubble {
+            max-width: 70%;
+            padding: 14px 18px;
+            border-radius: 18px;
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+        }
+
+        .message.ai .message-bubble {
+            background: linear-gradient(135deg, rgba(255, 180, 162, 0.2), rgba(212, 165, 244, 0.2));
+            border-left: 3px solid var(--accent-rose);
+        }
+
+        .message.user .message-bubble {
+            background: var(--glass-bg);
+            border-right: 3px solid var(--primary-purple);
+        }
+
+        .message-text {
+            font-size: 0.95rem;
+            line-height: 1.5;
+            margin-bottom: 6px;
+        }
+
+        .message-time {
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.5);
+            text-align: right;
+        }
+
+        .audio-player,
+        .message-video {
+            margin-top: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            padding: 10px;
+        }
+
+        .message-video video {
+            width: 100%;
+            border-radius: 8px;
+        }
+
+        /* 输入区域 */
+        .input-container {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            border-top: 2px solid var(--accent-rose);
+            padding: 20px 32px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            box-shadow: 0 -4px 20px rgba(255, 180, 162, 0.2);
+        }
+
+        .text-input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid var(--accent-rose);
+            border-radius: 20px;
+            padding: 12px 20px;
+            color: white;
+            font-family: var(--font-body);
+            font-size: 0.95rem;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .text-input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .text-input:focus {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: var(--soft-lavender);
+            box-shadow: 0 0 20px rgba(255, 180, 162, 0.4);
+        }
+
+        .voice-button {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-rose), var(--soft-lavender));
+            border: none;
+            cursor: pointer;
+            font-size: 1.3rem;
+            transition: all 0.3s;
+        }
+
+        .voice-button:hover {
+            transform: scale(1.1);
+        }
+
+        /* 右侧：Chiffon 视频展示 */
+        .chiffon-video-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border-left: 1px solid var(--glass-border);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            animation: slideInRight 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+            overflow-y: auto;
+        }
+
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(60px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .video-panel-header {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .video-panel-title {
+            font-family: var(--font-display);
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary-pink), var(--soft-lavender));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 4px;
+        }
+
+        .video-panel-subtitle {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .live-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #FF4444;
+            border-radius: 50%;
+            animation: livePulse 1.5s infinite;
+        }
+
+        @keyframes livePulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.2); }
+        }
+
+        /* Chiffon 主视频展示 */
+        .chiffon-main-display {
+            position: relative;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 24px;
+            overflow: hidden;
+            aspect-ratio: 3/4;
+            border: 2px solid var(--glass-border);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .chiffon-main-display img,
+        .chiffon-main-display video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .video-actions {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .action-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .action-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: scale(1.1);
+        }
+
+        .action-btn.primary {
+            background: linear-gradient(135deg, var(--accent-rose), var(--soft-lavender));
+            border-color: transparent;
+            width: 60px;
+            height: 60px;
+        }
+
+        .chiffon-playlist {
+            margin-top: 10px;
+        }
+
+        .playlist-title {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .playlist-items {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .playlist-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: var(--glass-bg);
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .playlist-item:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateX(4px);
+        }
+
+        .playlist-item.active {
+            border-color: var(--accent-rose);
+            background: rgba(255, 180, 162, 0.15);
+        }
+
+        .playlist-thumb {
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+
+        .playlist-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .playlist-name {
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .playlist-desc {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .playlist-duration {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 40px;
+            opacity: 0.6;
+        }
+
+        .empty-state-icon {
+            font-size: 3.5rem;
+            margin-bottom: 16px;
+        }
+
+        .empty-state-text {
+            font-family: var(--font-display);
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        /* 响应式 */
+        @media (max-width: 1024px) {
+            .main-container {
+                grid-template-columns: 1fr;
+            }
+            .chiffon-video-panel {
+                display: none;
+            }
+            .media-tabs {
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="background-layer">
+        <img src="https://cdn.jsdelivr.net/gh/smartchainark/clawpal@main/assets/chiffon.jpg"
+             alt="Chiffon"
+             class="background-media"
+             id="backgroundMedia">
+        <div class="background-overlay"></div>
+    </div>
+
+    <div class="main-container">
+        <!-- 左侧：对话区 -->
+        <main class="chat-container">
+            <header class="chat-header">
+                <!-- 基本信息 -->
+                <div class="header-info">
+                    <img src="https://cdn.jsdelivr.net/gh/smartchainark/clawpal@main/assets/chiffon.jpg"
+                         alt="Chiffon"
+                         class="chat-avatar">
+                    <div class="chat-info">
+                        <h2 class="chat-name">Chiffon</h2>
+                        <div class="chat-status">
+                            <span class="status-indicator"></span>
+                            <span id="statusText">在线</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 主导航按钮 -->
+                <div class="media-tabs">
+                    <button class="media-tab active" onclick="filterMedia('moments')">✨ 动态</button>
+                    <button class="media-tab" onclick="filterMedia('photos')">📸 照片</button>
+                    <button class="media-tab" onclick="filterMedia('videos')">🎬 视频</button>
+                </div>
+            </header>
+
+            <div class="messages-container" id="messagesContainer">
+                <div class="empty-state">
+                    <div class="empty-state-icon">💕</div>
+                    <p class="empty-state-text">开始和 Chiffon 聊天吧~</p>
+                </div>
+            </div>
+
+            <div class="input-container">
+                <input type="text"
+                       class="text-input"
+                       id="textInput"
+                       placeholder="输入消息..."
+                       onkeypress="handleKeyPress(event)">
+                <button class="voice-button" id="voiceButton" onclick="toggleVoiceInput()">🎤</button>
+            </div>
+        </main>
+
+        <!-- 右侧：Chiffon 视频展示 -->
+        <aside class="chiffon-video-panel">
+            <div class="video-panel-header">
+                <h3 class="video-panel-title">Chiffon</h3>
+                <p class="video-panel-subtitle">
+                    <span class="live-indicator"></span>
+                    正在直播
+                </p>
+            </div>
+
+            <div class="chiffon-main-display" id="mainDisplay">
+                <img src="https://cdn.jsdelivr.net/gh/smartchainark/clawpal@main/assets/chiffon.jpg"
+                     alt="Chiffon"
+                     id="mainMedia">
+            </div>
+
+            <!-- 控制按钮移到照片下方 -->
+            <div class="video-actions">
+                <button class="action-btn" onclick="previousMedia()" title="上一个">⏮️</button>
+                <button class="action-btn primary" onclick="togglePlayPause()" title="播放/暂停" id="playBtn">▶️</button>
+                <button class="action-btn" onclick="nextMedia()" title="下一个">⏭️</button>
+            </div>
+
+            <div class="chiffon-playlist">
+                <h4 class="playlist-title">🎬 Chiffon 的动态</h4>
+                <div class="playlist-items" id="playlistItems">
+                    <div class="playlist-item active" onclick="selectPlaylistItem(0)">
+                        <img src="https://cdn.jsdelivr.net/gh/smartchainark/clawpal@main/assets/chiffon.jpg"
+                             class="playlist-thumb" alt="Chiffon">
+                        <div class="playlist-info">
+                            <div class="playlist-name">午后咖啡时光</div>
+                            <div class="playlist-desc">在工作室喝咖啡 ☕</div>
+                        </div>
+                        <div class="playlist-duration">📸</div>
+                    </div>
+
+                    <div class="playlist-item" onclick="selectPlaylistItem(1)">
+                        <img src="https://cdn.jsdelivr.net/gh/smartchainark/clawpal@main/assets/chiffon.jpg"
+                             class="playlist-thumb" alt="Chiffon">
+                        <div class="playlist-info">
+                            <div class="playlist-name">工作室日常</div>
+                            <div class="playlist-desc">今天画了新插画 🎨</div>
+                        </div>
+                        <div class="playlist-duration">📸</div>
+                    </div>
+
+                    <div class="playlist-item" onclick="selectPlaylistItem(2)">
+                        <img src="https://cdn.jsdelivr.net/gh/smartchainark/clawpal@main/assets/chiffon.jpg"
+                             class="playlist-thumb" alt="Chiffon">
+                        <div class="playlist-info">
+                            <div class="playlist-name">周末时光</div>
+                            <div class="playlist-desc">在公园散步 ✨</div>
+                        </div>
+                        <div class="playlist-duration">📸</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        let ws = null;
+        let currentMediaIndex = 0;
+        let isPlaying = false;
+
+        // WebSocket 连接
+        function connectWebSocket() {
+            ws = new WebSocket('ws://localhost:8765');
+            ws.onopen = () => {
+                console.log('✅ WebSocket 连接成功');
+                updateStatus('在线', true);
+            };
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleWebSocketMessage(data);
+            };
+            ws.onclose = () => {
+                console.log('⚠️ WebSocket 断开');
+                updateStatus('离线', false);
+                setTimeout(connectWebSocket, 5000);
+            };
+        }
+
+        function handleWebSocketMessage(data) {
+            console.log('收到消息:', data);
+            switch (data.type) {
+                case 'processing':
+                    updateStatus('正在思考...', true);
+                    break;
+                case 'voice':
+                    addMessage('ai', data.text, data.audioUrl);
+                    updateStatus('在线', true);
+                    break;
+                case 'video':
+                    addMessage('ai', data.text, null, data.videoUrl);
+                    if (data.videoUrl) updateMainDisplay(data.videoUrl, 'video');
+                    updateStatus('在线', true);
+                    break;
+                case 'error':
+                    addMessage('system', '❌ ' + data.message);
+                    updateStatus('在线', true);
+                    break;
+            }
+        }
+
+        function updateStatus(text, online) {
+            document.getElementById('statusText').textContent = text;
+            document.querySelector('.status-indicator').style.background = online ? '#4CAF50' : '#999';
+        }
+
+        function addMessage(sender, text, audioUrl = null, videoUrl = null) {
+            const container = document.getElementById('messagesContainer');
+            const emptyState = container.querySelector('.empty-state');
+            if (emptyState) emptyState.remove();
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+
+            const bubble = document.createElement('div');
+            bubble.className = 'message-bubble';
+
+            const textDiv = document.createElement('div');
+            textDiv.className = 'message-text';
+            textDiv.textContent = text;
+            bubble.appendChild(textDiv);
+
+            if (videoUrl) {
+                const videoContainer = document.createElement('div');
+                videoContainer.className = 'message-video';
+                const video = document.createElement('video');
+                video.controls = true;
+                video.src = videoUrl;
+                videoContainer.appendChild(video);
+                bubble.appendChild(videoContainer);
+            }
+
+            if (audioUrl) {
+                const audioPlayer = createAudioPlayer(audioUrl);
+                bubble.appendChild(audioPlayer);
+            }
+
+            const timeDiv = document.createElement('div');
+            timeDiv.className = 'message-time';
+            timeDiv.textContent = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+            bubble.appendChild(timeDiv);
+
+            messageDiv.appendChild(bubble);
+            container.appendChild(messageDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function createAudioPlayer(audioUrl) {
+            const player = document.createElement('div');
+            player.className = 'audio-player';
+            const audio = document.createElement('audio');
+            audio.controls = true;
+            audio.src = audioUrl;
+            audio.autoplay = true;
+            player.appendChild(audio);
+            return player;
+        }
+
+        function sendMessage(text) {
+            if (!text.trim() || !ws || ws.readyState !== WebSocket.OPEN) return;
+            addMessage('user', text);
+            ws.send(JSON.stringify({ type: 'voice', text: text }));
+            document.getElementById('textInput').value = '';
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage(document.getElementById('textInput').value);
+            }
+        }
+
+        function toggleVoiceInput() {
+            alert('语音输入功能待实现');
+        }
+
+        // 媒体类型切换
+        function filterMedia(type) {
+            document.querySelectorAll('.media-tab').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            console.log('切换到:', type);
+
+            // 根据类型加载不同内容
+            switch(type) {
+                case 'moments':
+                    console.log('加载动态内容');
+                    // 这里可以加载最新的动态（照片+视频混合）
+                    break;
+                case 'photos':
+                    console.log('加载照片');
+                    // 这里可以加载照片列表
+                    break;
+                case 'videos':
+                    console.log('加载视频');
+                    // 这里可以加载视频列表
+                    break;
+            }
+        }
+
+        function updateMainDisplay(mediaUrl, type) {
+            const mainMedia = document.getElementById('mainMedia');
+            const typeBadge = document.querySelector('.video-type-badge');
+
+            if (type === 'video') {
+                const video = document.createElement('video');
+                video.src = mediaUrl;
+                video.id = 'mainMedia';
+                video.autoplay = true;
+                video.loop = true;
+                video.style.width = '100%';
+                video.style.height = '100%';
+                video.style.objectFit = 'cover';
+                mainMedia.parentNode.replaceChild(video, mainMedia);
+                typeBadge.textContent = '🎬 视频';
+                isPlaying = true;
+                document.getElementById('playBtn').textContent = '⏸️';
+            } else {
+                if (mainMedia.tagName === 'VIDEO') {
+                    const img = document.createElement('img');
+                    img.src = mediaUrl;
+                    img.id = 'mainMedia';
+                    img.alt = 'Chiffon';
+                    mainMedia.parentNode.replaceChild(img, mainMedia);
+                } else {
+                    mainMedia.src = mediaUrl;
+                }
+                typeBadge.textContent = '📸 照片';
+            }
+        }
+
+        function togglePlayPause() {
+            const mainMedia = document.getElementById('mainMedia');
+            if (mainMedia.tagName === 'VIDEO') {
+                if (isPlaying) {
+                    mainMedia.pause();
+                    document.getElementById('playBtn').textContent = '▶️';
+                } else {
+                    mainMedia.play();
+                    document.getElementById('playBtn').textContent = '⏸️';
+                }
+                isPlaying = !isPlaying;
+            }
+        }
+
+        function selectPlaylistItem(index) {
+            document.querySelectorAll('.playlist-item').forEach((item, i) => {
+                item.classList.toggle('active', i === index);
+            });
+            currentMediaIndex = index;
+        }
+
+        function previousMedia() {
+            const items = document.querySelectorAll('.playlist-item');
+            currentMediaIndex = (currentMediaIndex - 1 + items.length) % items.length;
+            selectPlaylistItem(currentMediaIndex);
+        }
+
+        function nextMedia() {
+            const items = document.querySelectorAll('.playlist-item');
+            currentMediaIndex = (currentMediaIndex + 1) % items.length;
+            selectPlaylistItem(currentMediaIndex);
+        }
+
+        window.addEventListener('load', () => {
+            connectWebSocket();
+        });
+
+        window.addEventListener('beforeunload', () => {
+            if (ws) ws.close();
+        });
+    </script>
+</body>
+</html>
