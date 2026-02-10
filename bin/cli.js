@@ -286,6 +286,11 @@ async function main() {
     // Parse CLI args
     const args = process.argv.slice(2);
     let customWorkspace = null;
+    let autoCharacter = null;
+    let autoReplicateToken = null;
+    let autoFalKey = null;
+    let autoReferenceImage = null;
+    let autoYes = false;
 
     for (let i = 0; i < args.length; i++) {
       if (args[i] === "--workspace" && args[i + 1]) {
@@ -293,17 +298,37 @@ async function main() {
           ? path.join(HOME, args[i + 1].slice(1))
           : path.resolve(args[i + 1]);
         i++;
+      } else if (args[i] === "--character" && args[i + 1]) {
+        autoCharacter = args[i + 1];
+        i++;
+      } else if (args[i] === "--replicate-token" && args[i + 1]) {
+        autoReplicateToken = args[i + 1];
+        i++;
+      } else if (args[i] === "--fal-key" && args[i + 1]) {
+        autoFalKey = args[i + 1];
+        i++;
+      } else if (args[i] === "--reference-image" && args[i + 1]) {
+        autoReferenceImage = args[i + 1];
+        i++;
+      } else if (args[i] === "--yes" || args[i] === "-y") {
+        autoYes = true;
       } else if (args[i] === "--help" || args[i] === "-h") {
         console.log(`
 Usage: clawpal [options]
 
 Options:
-  --workspace <path>   Install to a specific workspace (default: ~/.openclaw/workspace)
-  -h, --help          Show this help message
+  --workspace <path>        Install to a specific workspace (default: ~/.openclaw/workspace)
+  --character <name>        Character to install: boyfriend, girlfriend, pet, or 1-3
+  --replicate-token <token> Replicate API token (for selfie + video)
+  --fal-key <key>          fal.ai API key (for selfie only)
+  --reference-image <url>  Custom reference image URL
+  -y, --yes                Skip all confirmation prompts
+  -h, --help               Show this help message
 
 Examples:
-  clawpal                                          # Install to default workspace
-  clawpal --workspace ~/.openclaw/workspace-clawpal  # Install to custom workspace
+  clawpal                                          # Interactive installation
+  clawpal --workspace ~/.openclaw/workspace-chiffon  # Install to custom workspace
+  clawpal --character girlfriend --replicate-token r8_xxx --yes  # Automated installation
 `);
         rl.close();
         process.exit(0);
@@ -351,8 +376,12 @@ ${c("magenta", "\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25
     if (fs.existsSync(skillDest)) {
       logWarn("Clawpal is already installed!");
       logInfo(`Location: ${skillDest}`);
-      const reinstall = await ask(rl, "\n  Reinstall/update? (y/N): ");
-      if (reinstall.toLowerCase() !== "y") {
+      let reinstall = autoYes;
+      if (!autoYes) {
+        const answer = await ask(rl, "\n  Reinstall/update? (y/N): ");
+        reinstall = answer.toLowerCase() === "y";
+      }
+      if (!reinstall) {
         log("\n  No changes made. Goodbye!");
         rl.close();
         process.exit(0);
@@ -373,33 +402,61 @@ ${c("magenta", "\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25
       process.exit(1);
     }
 
-    for (let i = 0; i < characters.length; i++) {
-      const ch = characters[i];
-      const emoji = ch.emoji || "";
-      const vibe = ch.personality?.vibe || "";
-      log(
-        `    ${c("cyan", `${i + 1})`)} ${emoji} ${c("bright", ch.name)} \u2014 ${ch.tagline || vibe}`
+    let chosen;
+    let charIdx = -1;
+
+    if (autoCharacter) {
+      // Auto-select character from parameter
+      const charLower = autoCharacter.toLowerCase();
+      // Try matching by name first
+      charIdx = characters.findIndex(
+        (ch) => ch.name.toLowerCase() === charLower || ch._file.replace(".yaml", "") === charLower
       );
+      // If not found, try numeric index
+      if (charIdx === -1) {
+        const numIdx = parseInt(autoCharacter, 10) - 1;
+        if (!isNaN(numIdx) && numIdx >= 0 && numIdx < characters.length) {
+          charIdx = numIdx;
+        }
+      }
+      if (charIdx === -1) {
+        logError(`Invalid character: ${autoCharacter}`);
+        logInfo("Available: " + characters.map((ch) => ch.name).join(", "));
+        rl.close();
+        process.exit(1);
+      }
+      chosen = characters[charIdx];
+      log(`  ${c("dim", `Auto-selected: ${chosen.emoji || ""} ${chosen.name}`)}\n`);
+    } else {
+      // Interactive character selection
+      for (let i = 0; i < characters.length; i++) {
+        const ch = characters[i];
+        const emoji = ch.emoji || "";
+        const vibe = ch.personality?.vibe || "";
+        log(
+          `    ${c("cyan", `${i + 1})`)} ${emoji} ${c("bright", ch.name)} \u2014 ${ch.tagline || vibe}`
+        );
+      }
+
+      log("");
+      const charChoice = await ask(rl, "  > ");
+      charIdx = parseInt(charChoice, 10) - 1;
+
+      if (isNaN(charIdx) || charIdx < 0 || charIdx >= characters.length) {
+        logError("Invalid choice");
+        rl.close();
+        process.exit(1);
+      }
+
+      chosen = characters[charIdx];
+      log("");
+      logSuccess(`Selected: ${chosen.emoji || ""} ${chosen.name}`);
     }
-
-    log("");
-    const charChoice = await ask(rl, "  > ");
-    const charIdx = parseInt(charChoice, 10) - 1;
-
-    if (isNaN(charIdx) || charIdx < 0 || charIdx >= characters.length) {
-      logError("Invalid choice");
-      rl.close();
-      process.exit(1);
-    }
-
-    const chosen = characters[charIdx];
-    log("");
-    logSuccess(`Selected: ${chosen.emoji || ""} ${chosen.name}`);
 
     // Check reference image
-    let referenceImage = chosen.appearance?.reference_image || "";
+    let referenceImage = autoReferenceImage || chosen.appearance?.reference_image || "";
 
-    if (!referenceImage) {
+    if (!referenceImage && !autoCharacter) {
       log("");
       logWarn(`${chosen.name} has no reference image configured.`);
       logInfo("A reference image is needed for selfies and videos.");
@@ -415,29 +472,46 @@ ${c("magenta", "\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25
       } else {
         logInfo("Skipped — selfie will be disabled, voice + video still work");
       }
+    } else if (autoReferenceImage) {
+      chosen.appearance = chosen.appearance || {};
+      chosen.appearance.reference_image = autoReferenceImage;
+      log(`  ${c("dim", `Using custom reference image`)}`);
     }
 
     // ── Step 2: API key ───────────────────────────────────────────────────
 
     log(`\n${c("cyan", "  Step 2/3: Set up API keys\n")}`);
 
-    log(`    Replicate token (for selfie + video):`);
-    log(
-      `    ${c("dim", "Get from: https://replicate.com/account/api-tokens")}`
-    );
-    const replicateKey = await ask(rl, "    > ");
+    let replicateKey = autoReplicateToken || "";
+    let falKey = autoFalKey || "";
 
-    let falKey = "";
-    if (!replicateKey) {
-      log(`\n    fal.ai key (for selfie only — no video):`);
-      log(`    ${c("dim", "Get from: https://fal.ai/dashboard/keys")}`);
-      falKey = await ask(rl, "    > ");
-    }
+    if (!autoReplicateToken && !autoFalKey) {
+      // Interactive API key input
+      log(`    Replicate token (for selfie + video):`);
+      log(
+        `    ${c("dim", "Get from: https://replicate.com/account/api-tokens")}`
+      );
+      replicateKey = await ask(rl, "    > ");
 
-    if (!replicateKey && !falKey) {
-      logWarn("No API key entered — selfie and video will not work.");
-      logInfo("Voice messages still work (Edge TTS is free).");
-      logInfo("You can add keys later in ~/.openclaw/openclaw.json");
+      if (!replicateKey) {
+        log(`\n    fal.ai key (for selfie only — no video):`);
+        log(`    ${c("dim", "Get from: https://fal.ai/dashboard/keys")}`);
+        falKey = await ask(rl, "    > ");
+      }
+
+      if (!replicateKey && !falKey) {
+        logWarn("No API key entered — selfie and video will not work.");
+        logInfo("Voice messages still work (Edge TTS is free).");
+        logInfo("You can add keys later in ~/.openclaw/openclaw.json");
+      }
+    } else {
+      // Auto mode with provided keys
+      if (replicateKey) {
+        log(`  ${c("dim", `Using provided Replicate token`)}`);
+      }
+      if (falKey) {
+        log(`  ${c("dim", `Using provided fal.ai key`)}`);
+      }
     }
 
     log(`\n    ${c("dim", "Voice is free via Edge TTS \u2014 no key needed!")}`);
