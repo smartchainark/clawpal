@@ -1,11 +1,11 @@
 #!/bin/bash
-# voice.sh — Generate a voice message via Edge TTS
+# voice.sh — Generate a voice message via Edge TTS and send it
 #
-# Usage: voice.sh "<text>" ["<output_file>"]
+# Usage: voice.sh "<text>" "<channel>" ["<caption>"]
 #
 # Reads voice config (name, rate, pitch) from character.yaml
 # Uses edge-tts (free, no API key needed)
-# Outputs the generated MP3 file path — sending is handled by the agent
+# Generates audio and sends it via OpenClaw
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/_common.sh"
@@ -24,14 +24,19 @@ PITCH="${PITCH:-+0Hz}"
 
 # Parse arguments
 TEXT="${1:-}"
-OUTPUT="${2:-}"
+CHANNEL="${2:-}"
+CAPTION="${3:-}"
 
-if [ -z "$TEXT" ]; then
-    echo "Usage: $0 <text> [output_file]"
+if [ -z "$TEXT" ] || [ -z "$CHANNEL" ]; then
+    echo "Usage: $0 <text> <channel> [caption]"
     echo ""
     echo "Arguments:"
-    echo "  text         - Text to speak (required)"
-    echo "  output_file  - Output MP3 path (optional, auto-generated if omitted)"
+    echo "  text     - Text to speak (required)"
+    echo "  channel  - Target channel (required) e.g., #general, @user"
+    echo "  caption  - Message caption (optional)"
+    echo ""
+    echo "Example:"
+    echo "  $0 \"Hey! Just wanted to say hi\" \"#general\" \"Voice message for you\""
     exit 1
 fi
 
@@ -64,7 +69,7 @@ log_info "Voice: $VOICE (rate=$RATE, pitch=$PITCH)"
 log_info "Text: $TEXT"
 
 # Generate audio
-OUTFILE="${OUTPUT:-/tmp/clawpal-voice-$(date +%s).mp3}"
+OUTFILE="/tmp/clawpal-voice-$(date +%s).mp3"
 
 $EDGE_TTS_CMD \
     --voice "$VOICE" \
@@ -81,6 +86,75 @@ fi
 FILE_SIZE=$(wc -c < "$OUTFILE" | tr -d ' ')
 log_info "Audio generated: ${FILE_SIZE} bytes → $OUTFILE"
 
-# Output JSON result for the agent
-jq -n --arg file "$OUTFILE" --arg voice "$VOICE" --arg character "$CHAR_NAME" --argjson size "$FILE_SIZE" \
-    '{success: true, file: $file, voice: $voice, character: $character, size: $size}'
+# Send via OpenClaw
+log_info "Sending to channel: $CHANNEL"
+
+# Parse channel format (platform:target)
+parse_channel "$CHANNEL"
+
+# Check for openclaw CLI
+if command -v openclaw &>/dev/null; then
+    USE_CLI=true
+else
+    log_warn "openclaw CLI not found - will attempt direct API call"
+    USE_CLI=false
+fi
+
+# Send message
+if [ "$USE_CLI" = true ]; then
+    # Use OpenClaw CLI with local file path
+    if [ -n "$OPENCLAW_PLATFORM" ]; then
+        if [ -n "$CAPTION" ]; then
+            openclaw message send \
+                --channel "$OPENCLAW_PLATFORM" \
+                --target "$OPENCLAW_TARGET" \
+                --media "$OUTFILE" \
+                -m "$CAPTION"
+        else
+            openclaw message send \
+                --channel "$OPENCLAW_PLATFORM" \
+                --target "$OPENCLAW_TARGET" \
+                --media "$OUTFILE"
+        fi
+    else
+        if [ -n "$CAPTION" ]; then
+            openclaw message send \
+                --target "$OPENCLAW_TARGET" \
+                --media "$OUTFILE" \
+                -m "$CAPTION"
+        else
+            openclaw message send \
+                --target "$OPENCLAW_TARGET" \
+                --media "$OUTFILE"
+        fi
+    fi
+else
+    # Direct API call - need to send file path
+    GATEWAY_URL="${OPENCLAW_GATEWAY_URL:-http://localhost:18789}"
+
+    if [ -n "$CAPTION" ]; then
+        MESSAGE_JSON=$(jq -n \
+            --arg channel "$CHANNEL" \
+            --arg message "$CAPTION" \
+            --arg media "$OUTFILE" \
+            '{action: "send", channel: $channel, message: $message, media: $media}')
+    else
+        MESSAGE_JSON=$(jq -n \
+            --arg channel "$CHANNEL" \
+            --arg media "$OUTFILE" \
+            '{action: "send", channel: $channel, media: $media}')
+    fi
+
+    curl -s -X POST "$GATEWAY_URL/message" \
+        -H "Content-Type: application/json" \
+        ${OPENCLAW_GATEWAY_TOKEN:+-H "Authorization: Bearer $OPENCLAW_GATEWAY_TOKEN"} \
+        -d "$MESSAGE_JSON"
+fi
+
+log_info "Done! Audio sent to $CHANNEL"
+
+# Output JSON result for programmatic use
+echo ""
+echo "--- Result ---"
+jq -n --arg file "$OUTFILE" --arg voice "$VOICE" --arg character "$CHAR_NAME" --argjson size "$FILE_SIZE" --arg channel "$CHANNEL" \
+    '{success: true, file: $file, voice: $voice, character: $character, size: $size, channel: $channel}'

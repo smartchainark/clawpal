@@ -86,29 +86,28 @@ if echo "$RESPONSE" | jq -e '.detail' >/dev/null 2>&1; then
     exit 1
 fi
 
-POLL_URL=$(echo "$RESPONSE" | jq -r '.urls.get // empty')
-if [ -z "$POLL_URL" ]; then
-    log_error "No poll URL in response"
-    echo "Response: $RESPONSE"
+STATUS=$(echo "$RESPONSE" | jq -r '.status // empty')
+
+if [ "$STATUS" = "starting" ] || [ "$STATUS" = "processing" ]; then
+    POLL_URL=$(echo "$RESPONSE" | jq -r '.urls.get // empty')
+    if [ -z "$POLL_URL" ]; then
+        log_error "No poll URL found"
+        exit 1
+    fi
+    log_info "Video generation started — this may take 30-120 seconds..."
+    RESPONSE=$(poll_replicate "$POLL_URL" "$REPLICATE_API_TOKEN" 300)
+fi
+
+if [ "$(echo "$RESPONSE" | jq -r '.status')" = "failed" ]; then
+    log_error "Replicate failed: $(echo "$RESPONSE" | jq -r '.error // "Unknown"')"
     exit 1
 fi
 
-log_info "Video generation started — this may take 30-120 seconds..."
-
-# Poll until complete (5 min timeout)
-FINAL=$(poll_replicate "$POLL_URL" "$REPLICATE_API_TOKEN" 300)
-
-if [ $? -ne 0 ]; then
-    log_error "Video generation failed"
-    exit 1
-fi
-
-# Extract output URL
-VIDEO_URL=$(echo "$FINAL" | jq -r 'if (.output | type) == "array" then .output[0] else .output end // empty')
+VIDEO_URL=$(echo "$RESPONSE" | jq -r 'if (.output | type) == "array" then .output[0] else .output end // empty')
 
 if [ -z "$VIDEO_URL" ]; then
     log_error "Failed to extract video URL from response"
-    echo "Response: $FINAL"
+    echo "Response: $FINAL" >&2
     exit 1
 fi
 

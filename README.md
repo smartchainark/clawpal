@@ -88,12 +88,12 @@ Short video clips from a start image.
 ```
 User: "Send me a selfie at a cafe"
   ↓
-Agent reads SKILL.md → calls selfie.sh → gets image URL
+Agent reads SKILL.md → calls selfie.sh with channel
   ↓
-Agent sends image to chat via OpenClaw
+Script generates image → sends via OpenClaw → user receives it
 ```
 
-Scripts only generate. Agent handles sending. Clean separation.
+Scripts generate AND send. Direct and efficient.
 
 ## Prerequisites
 

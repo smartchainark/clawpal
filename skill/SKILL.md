@@ -138,6 +138,8 @@ curl -s -X POST "https://fal.run/xai/grok-imagine-image/edit" \
 
 Generate speech using Edge TTS (free, no API key). Returns JSON with local `file` path.
 
+**Sending:** Use the returned `file` path with `MEDIA:` tag or `openclaw message send --media <file>`
+
 ### Voice Configuration
 
 Voices are configured per-character in `character.yaml`:

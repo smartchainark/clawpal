@@ -123,7 +123,7 @@ fi
 
 if [ -z "$IMAGE_URL" ]; then
     log_error "Failed to extract image URL from response"
-    echo "Response: $RESPONSE"
+    echo "Response: $RESPONSE" >&2
     exit 1
 fi
 

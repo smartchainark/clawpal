@@ -65,15 +65,17 @@ personality:
 
 | User Intent | Script | Env Required |
 |---|---|---|
-| "send a pic/selfie", "what are you doing?" | `selfie.sh` | `REPLICATE_API_TOKEN` or `FAL_KEY` |
-| "send a voice message", "say this" | `voice.sh` | None (Edge TTS is free) |
-| "send a video clip", "make a video" | `video.sh` | `REPLICATE_API_TOKEN` |
+| "send a pic/selfie", "what are you doing?" | `selfie.sh <context> <channel> [mode] [caption]` | `REPLICATE_API_TOKEN` or `FAL_KEY` |
+| "send a voice message", "say this" | `voice.sh <text> <channel> [caption]` | None (Edge TTS is free) |
+| "send a video clip", "make a video" | `video.sh <prompt> <channel> [caption] [source_image] [duration]` | `REPLICATE_API_TOKEN` |
+
+**Note**: All scripts now automatically send media via OpenClaw after generation.
 
 ## Selfie Generation
 
-**Script:** `scripts/selfie.sh "<context>" ["<mode>"]`
+**Script:** `scripts/selfie.sh "<context>" "<channel>" ["<mode>"] ["<caption>"]`
 
-Edit the character's reference image using AI. Returns JSON with `image_url`.
+Edit the character's reference image using AI and send it to the specified channel.
 
 ### Providers
 
@@ -134,9 +136,13 @@ curl -s -X POST "https://fal.run/xai/grok-imagine-image/edit" \
 
 ## Voice Messages
 
-**Script:** `scripts/voice.sh "<text>" ["<output_file>"]`
+**Script:** `scripts/voice.sh "<text>" "<channel>" ["<caption>"]`
 
-Generate speech using Edge TTS (free, no API key). Returns JSON with local `file` path.
+Generate speech using Edge TTS (free, no API key) and send it to the specified channel.
+
+The script automatically:
+1. Generates MP3 via Edge TTS (local file)
+2. Sends directly via OpenClaw (supports local file paths)
 
 ### Voice Configuration
 
@@ -212,26 +218,35 @@ All scripts output JSON to stdout. The agent reads the result and handles sendin
 
 **voice.sh output:**
 ```json
-{"success": true, "file": "/tmp/clawpal-voice-xxx.mp3", "voice": "en-US-GuyNeural", "character": "Clawpal", "size": 28944}
+{"success": true, "file": "/tmp/clawpal-voice-xxx.mp3", "voice": "en-US-GuyNeural", "character": "Clawpal", "size": 28944, "channel": "#general"}
 ```
 
 **video.sh output:**
 ```json
-{"success": true, "video_url": "https://...", "model": "kwaivgi/kling-v2.6", "duration": 5, "character": "Clawpal"}
+{"success": true, "video_url": "https://...", "model": "kwaivgi/kling-v2.6", "duration": 5, "character": "Clawpal", "channel": "#general"}
 ```
 
-## Combined Examples
+## Usage Examples
 
-**Selfie + voice note:**
+**Send a selfie:**
 ```bash
-scripts/selfie.sh "at a cozy cafe" direct
-scripts/voice.sh "Hey! Just grabbed a latte, wish you were here"
+scripts/selfie.sh "at a cozy cafe" "#general" "auto" "Just grabbed a latte!"
 ```
 
-**Video selfie with narration:**
+**Send a voice message:**
 ```bash
-scripts/video.sh "waving hello with a warm smile, cozy cafe background"
-scripts/voice.sh "Hey you! Just wanted to say hi"
+scripts/voice.sh "Hey! Just wanted to say hi" "#general" "Voice message for you"
+```
+
+**Send a video:**
+```bash
+scripts/video.sh "waving hello with a warm smile" "#general" "Check this out!"
+```
+
+**Combined media (sent sequentially):**
+```bash
+scripts/selfie.sh "at a cozy cafe" "#general" "auto" "Look where I am!"
+scripts/voice.sh "Isn't this place amazing?" "#general"
 ```
 
 ## Environment Variables
