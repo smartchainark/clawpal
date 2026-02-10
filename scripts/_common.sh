@@ -59,6 +59,18 @@ load_env() {
 # Auto-load .env at script start
 load_env
 
+# Validate API keys are available (after .env is loaded)
+validate_api_keys() {
+    if [ -z "${REPLICATE_API_TOKEN:-}" ] && [ -z "${FAL_KEY:-}" ]; then
+        log_error "No API key found. Set REPLICATE_API_TOKEN or FAL_KEY in .env file"
+        log_info "Create .env file in skill directory with:"
+        echo "  REPLICATE_API_TOKEN=\"your_token_here\""
+        echo "  # or"
+        echo "  FAL_KEY=\"your_fal_key_here\""
+        exit 1
+    fi
+}
+
 require_cmd() {
     local cmd="$1" hint="${2:-}"
     if ! command -v "$cmd" &>/dev/null; then

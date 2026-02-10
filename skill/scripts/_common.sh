@@ -10,6 +10,67 @@ log_info()  { echo -e "${GREEN}[INFO]${NC} $1"; }
 log_warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
+# Load environment variables from .env file
+# Search order: same dir → skill dir → parent dir
+load_env() {
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[1]:-${BASH_SOURCE[0]}}")" && pwd)"
+
+    local candidates=(
+        "$script_dir/.env"
+        "$script_dir/../.env"
+        "$HOME/.openclaw/skills/clawpal/.env"
+    )
+
+    for env_file in "${candidates[@]}"; do
+        if [ -f "$env_file" ]; then
+            log_info "Loading env from: $env_file"
+            # Export variables from .env, skip comments and empty lines
+            set +u  # Temporarily disable unbound variable check
+            while IFS= read -r line || [ -n "$line" ]; do
+                # Skip comments and empty lines
+                [[ "$line" =~ ^[[:space:]]*# ]] && continue
+                [[ "$line" =~ ^[[:space:]]*$ ]] && continue
+
+                # Parse key=value
+                if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
+                    local key="${BASH_REMATCH[1]}"
+                    local value="${BASH_REMATCH[2]}"
+
+                    # Remove surrounding quotes
+                    value="${value#\"}"
+                    value="${value%\"}"
+                    value="${value#\'}"
+                    value="${value%\'}"
+
+                    # Export variable
+                    export "$key=$value"
+                fi
+            done < "$env_file"
+            set -u  # Re-enable unbound variable check
+            return 0
+        fi
+    done
+
+    log_warn "No .env file found, relying on system environment variables"
+    return 0
+}
+
+# Auto-load .env at script start
+load_env
+
+# Validate API keys are available (after .env is loaded)
+validate_api_keys() {
+    if [ -z "${REPLICATE_API_TOKEN:-}" ] && [ -z "${FAL_KEY:-}" ]; then
+        log_error "No API key found. Set REPLICATE_API_TOKEN or FAL_KEY in .env file"
+        log_info "Create .env file in skill directory with:"
+        echo "  REPLICATE_API_TOKEN=\"your_token_here\""
+        echo "  # or"
+        echo "  FAL_KEY=\"your_fal_key_here\""
+        exit 1
+    fi
+}
+
 require_cmd() {
     local cmd="$1" hint="${2:-}"
     if ! command -v "$cmd" &>/dev/null; then
