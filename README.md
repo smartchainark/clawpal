@@ -8,6 +8,8 @@ Cyber companion for OpenClaw. Selfie, voice, and video — give your AI a face, 
 
 ## Quick Start
 
+### Interactive Installation
+
 ```bash
 npx clawpal@latest
 ```
@@ -17,12 +19,30 @@ npx clawpal@latest
 2. **Enter API key** — Replicate for selfie + video (voice is free)
 3. **Done** — start chatting
 
+### Automated Installation
+
+```bash
+# Install with all options
+npx clawpal@latest --character girlfriend --replicate-token r8_xxx --yes
+
+# Install to custom workspace
+npx clawpal@latest --character girlfriend --workspace ~/.openclaw/workspace-chiffon -y
+
+# Available flags:
+#   --character <name>        boyfriend, girlfriend, pet, or 1-3
+#   --replicate-token <token> Replicate API token
+#   --fal-key <key>          fal.ai API key (alternative to Replicate)
+#   --reference-image <url>  Custom reference image URL
+#   --workspace <path>       Custom workspace path
+#   -y, --yes                Skip all prompts
+```
+
 ## Built-in Characters
 
 | Character | Type | Vibe |
 |-----------|------|------|
 | **Clawpal** | Cyber Boyfriend | Warm, caring, funny, down-to-earth |
-| **Luna** | Cyber Girlfriend | Witty, creative, curious, slightly chaotic |
+| **Chiffon** | Cyber Girlfriend | Witty, creative, curious, slightly chaotic |
 | **Mochi** | Cyber Pet | Sassy, dramatic, food-motivated |
 
 These are just starting points. Create any character you want — a cyber parent, a childhood friend, a fictional hero, a talking plant. Everything is driven by one `character.yaml` file.
