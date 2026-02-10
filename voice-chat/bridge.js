@@ -16,14 +16,7 @@ const path = require('path');
 const { exec } = require('child_process');
 const http = require('http');
 
-// 检查依赖
-try {
-    require('form-data');
-} catch (err) {
-    console.error('❌ 缺少依赖: form-data');
-    console.log('📦 请运行: npm install -g form-data');
-    process.exit(1);
-}
+// 不再需要 form-data 依赖（OpenClaw 支持本地文件）
 
 // 配置
 const CONFIG = {
@@ -103,180 +96,86 @@ async function handleSnapshot(ws, message) {
     }));
 
     try {
-        // 上传截图到公共 URL（Replicate API 需要 URL，不支持本地文件）
-        const imageUrl = await uploadImage(filepath);
-        console.log(`📤 图片已上传: ${imageUrl}`);
+        // 直接使用本地文件路径，OpenClaw 支持本地媒体文件
+        console.log(`📤 使用本地文件: ${filepath}`);
 
-        // 调用 Clawpal 的 video.sh 生成视频
-        const prompt = "waving hello with a warm smile at the camera";
-        const videoResult = await generateClawpalVideo(prompt, imageUrl);
+        // 调用 OpenClaw agent 发送图片消息
+        const agentMessage = `看到我了吗？给我一个温暖的回应`;
+        const cmd = `openclaw agent --to "${CONFIG.AGENT_TARGET}" --message "${agentMessage}" --media "${filepath}" --json --timeout ${CONFIG.AGENT_TIMEOUT}`;
 
-        console.log('✅ 视频生成成功:', videoResult.video_url);
-
-        // 返回视频 URL
-        ws.send(JSON.stringify({
-            type: 'video',
-            url: videoResult.video_url,
-            character: videoResult.character,
-            duration: videoResult.duration
-        }));
-
-    } catch (err) {
-        console.error('❌ Clawpal 处理失败:', err);
-        ws.send(JSON.stringify({
-            type: 'error',
-            message: `Clawpal 处理失败: ${err.message}`
-        }));
-    }
-}
-
-// 上传图片到公共 URL（多图床 fallback）
-async function uploadImage(filepath) {
-    const uploaders = [
-        { name: 'transfer.sh', fn: uploadToTransferSh },
-        { name: 'tmpfiles.org', fn: uploadToTmpFiles },
-        { name: '0x0.st', fn: uploadTo0x0 }
-    ];
-
-    for (const uploader of uploaders) {
-        try {
-            console.log(`📤 尝试上传到 ${uploader.name}...`);
-            const url = await uploader.fn(filepath);
-            console.log(`✅ 上传成功: ${uploader.name}`);
-            return url;
-        } catch (err) {
-            console.warn(`⚠️  ${uploader.name} 失败: ${err.message}`);
-        }
-    }
-
-    throw new Error('所有图床上传均失败');
-}
-
-// transfer.sh 上传
-function uploadToTransferSh(filepath) {
-    return new Promise((resolve, reject) => {
-        const FormData = require('form-data');
-        const form = new FormData();
-        const filename = path.basename(filepath);
-        form.append('file', fs.createReadStream(filepath), filename);
-
-        form.submit('https://transfer.sh', (err, res) => {
-            if (err) {
-                reject(new Error(`上传失败: ${err.message}`));
-                return;
-            }
-
-            let data = '';
-            res.on('data', chunk => data += chunk);
-            res.on('end', () => {
-                const url = data.trim();
-                if (url.startsWith('http')) {
-                    resolve(url);
-                } else {
-                    reject(new Error(`返回无效 URL: ${data}`));
-                }
-            });
-            res.on('error', reject);
-        });
-    });
-}
-
-// tmpfiles.org 上传
-function uploadToTmpFiles(filepath) {
-    return new Promise((resolve, reject) => {
-        const FormData = require('form-data');
-        const form = new FormData();
-        form.append('file', fs.createReadStream(filepath));
-
-        form.submit('https://tmpfiles.org/api/v1/upload', (err, res) => {
-            if (err) {
-                reject(new Error(`上传失败: ${err.message}`));
-                return;
-            }
-
-            let data = '';
-            res.on('data', chunk => data += chunk);
-            res.on('end', () => {
-                try {
-                    const json = JSON.parse(data);
-                    if (json.status === 'success' && json.data?.url) {
-                        // tmpfiles.org 返回的 URL 需要替换域名
-                        const url = json.data.url.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
-                        resolve(url);
-                    } else {
-                        reject(new Error(`返回无效响应: ${data}`));
-                    }
-                } catch (e) {
-                    reject(new Error(`解析响应失败: ${data}`));
-                }
-            });
-            res.on('error', reject);
-        });
-    });
-}
-
-// 0x0.st 上传（备选）
-function uploadTo0x0(filepath) {
-    return new Promise((resolve, reject) => {
-        const FormData = require('form-data');
-        const form = new FormData();
-        form.append('file', fs.createReadStream(filepath));
-
-        form.submit('https://0x0.st', (err, res) => {
-            if (err) {
-                reject(new Error(`上传失败: ${err.message}`));
-                return;
-            }
-
-            let data = '';
-            res.on('data', chunk => data += chunk);
-            res.on('end', () => {
-                const url = data.trim();
-                if (url.startsWith('http')) {
-                    resolve(url);
-                } else {
-                    reject(new Error(`返回无效 URL: ${data}`));
-                }
-            });
-            res.on('error', reject);
-        });
-    });
-}
-
-// 调用 Clawpal video.sh 生成视频
-function generateClawpalVideo(prompt, sourceImage) {
-    return new Promise((resolve, reject) => {
-        const videoScript = path.join(CONFIG.SKILL_DIR, 'scripts/video.sh');
-
-        // 调用: video.sh "<prompt>" ["<source_image>"] ["<duration>"]
-        const cmd = `bash "${videoScript}" "${prompt}" "${sourceImage}" 5`;
-
-        console.log(`🎬 执行: ${cmd}`);
+        console.log(`🤖 执行: ${cmd}`);
 
         exec(cmd, (error, stdout, stderr) => {
             if (error) {
+                console.error('❌ Agent 调用失败:', error.message);
                 console.error('stderr:', stderr);
-                reject(new Error(`video.sh 执行失败: ${error.message}`));
+                ws.send(JSON.stringify({
+                    type: 'error',
+                    message: `Agent 调用失败: ${error.message}`
+                }));
                 return;
             }
 
             try {
-                // 解析 JSON 输出
                 const result = JSON.parse(stdout.trim());
+                console.log('✅ Agent 响应:', JSON.stringify(result, null, 2));
 
-                if (!result.success || !result.video_url) {
-                    reject(new Error('视频生成失败或没有返回 URL'));
-                    return;
+                if (result.status === 'ok' && result.result?.payloads) {
+                    // 处理返回的消息
+                    const payloads = result.result.payloads;
+
+                    for (const payload of payloads) {
+                        if (payload.text) {
+                            // 提取音频路径
+                            const mediaMatch = payload.text.match(/MEDIA:\s*(.+?)$/m);
+                            if (mediaMatch) {
+                                const localPath = mediaMatch[1].trim();
+                                const filename = path.basename(localPath);
+                                const audioUrl = `http://localhost:${CONFIG.WS_PORT}/media/${filename}`;
+
+                                ws.send(JSON.stringify({
+                                    type: 'voice',
+                                    text: payload.text.replace(/MEDIA:.+$/m, '').trim() || 'AI 回复',
+                                    audioUrl: audioUrl
+                                }));
+                            } else {
+                                ws.send(JSON.stringify({
+                                    type: 'message',
+                                    text: payload.text
+                                }));
+                            }
+                        }
+                    }
+                } else {
+                    ws.send(JSON.stringify({
+                        type: 'error',
+                        message: 'Agent 未返回有效结果'
+                    }));
                 }
 
-                resolve(result);
-
-            } catch (err) {
+            } catch (parseErr) {
+                console.error('❌ 解析 Agent 输出失败:', parseErr.message);
                 console.error('stdout:', stdout);
-                reject(new Error(`无法解析 video.sh 输出: ${err.message}`));
+                ws.send(JSON.stringify({
+                    type: 'error',
+                    message: `解析失败: ${parseErr.message}`
+                }));
             }
         });
-    });
+
+        // 通知浏览器截图已保存
+        ws.send(JSON.stringify({
+            type: 'snapshot_saved',
+            filepath: filepath
+        }));
+
+    } catch (err) {
+        console.error('❌ 处理失败:', err);
+        ws.send(JSON.stringify({
+            type: 'error',
+            message: `处理失败: ${err.message}`
+        }));
+    }
 }
 
 // 启动服务器
