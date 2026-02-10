@@ -13,7 +13,7 @@ voice:
   pitch: "+20Hz"
 
 video:
-  model: kwaivgi/kling-v2.5-turbo-pro
+  model: kwaivgi/kling-v2.6
   duration: 5
   aspect_ratio: "1:1"
 

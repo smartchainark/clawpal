@@ -27,7 +27,7 @@ voice:
   pitch: "+0Hz"           # Pitch adjustment
 
 video:
-  model: kwaivgi/kling-v2.5-turbo-pro  # Replicate video model
+  model: kwaivgi/kling-v2.6  # Replicate video model
   duration: 5                           # Default duration (5 or 10)
   aspect_ratio: "1:1"                   # Video aspect ratio
 
@@ -55,9 +55,9 @@ personality:
 
 ## Selfie Generation
 
-**Script:** `scripts/selfie.sh "<context>" "<channel>" ["<mode>"] ["<caption>"]`
+**Script:** `scripts/selfie.sh "<context>" ["<mode>"]`
 
-Edit the character's reference image using AI and send it via OpenClaw.
+Edit the character's reference image using AI. Returns JSON with `image_url`.
 
 ### Providers
 
@@ -118,9 +118,9 @@ curl -s -X POST "https://fal.run/xai/grok-imagine-image/edit" \
 
 ## Voice Messages
 
-**Script:** `scripts/voice.sh "<text>" "<channel>" ["<caption>"]`
+**Script:** `scripts/voice.sh "<text>" ["<output_file>"]`
 
-Generate speech using Edge TTS (free, no API key) and send via OpenClaw.
+Generate speech using Edge TTS (free, no API key). Returns JSON with local `file` path.
 
 ### Voice Configuration
 
@@ -152,13 +152,13 @@ Voices are configured per-character in `character.yaml`:
 
 ## Video Clips
 
-**Script:** `scripts/video.sh "<prompt>" "<channel>" ["<source_image>"] ["<duration>"]`
+**Script:** `scripts/video.sh "<prompt>" ["<source_image>"] ["<duration>"]`
 
-Generate short video clips using Kling v2.5 on Replicate and send via OpenClaw.
+Generate short video clips using Kling v2.5 on Replicate. Returns JSON with `video_url`.
 
 ### Configuration
 
-- `video.model` — Replicate model (default: `kwaivgi/kling-v2.5-turbo-pro`)
+- `video.model` — Replicate model (default: `kwaivgi/kling-v2.6`)
 - `video.duration` — 5 or 10 seconds
 - `video.aspect_ratio` — `"1:1"`, `"16:9"`, `"9:16"`
 
@@ -177,7 +177,7 @@ jq -n --arg prompt "$PROMPT" --arg start_image "$IMAGE" \
       --argjson duration $DURATION --arg aspect_ratio "$RATIO" \
   '{input: {prompt: $prompt, start_image: $start_image, duration: $duration, aspect_ratio: $aspect_ratio}}'
 
-curl -s -X POST "https://api.replicate.com/v1/models/kwaivgi/kling-v2.5-turbo-pro/predictions" \
+curl -s -X POST "https://api.replicate.com/v1/models/kwaivgi/kling-v2.6/predictions" \
   -H "Authorization: Bearer $REPLICATE_API_TOKEN" \
   -H "Content-Type: application/json" \
   -d "$JSON_PAYLOAD"
@@ -185,38 +185,37 @@ curl -s -X POST "https://api.replicate.com/v1/models/kwaivgi/kling-v2.5-turbo-pr
 
 **Note:** Video generation takes 30-120 seconds. The script polls every 3 seconds and times out at 5 minutes.
 
-## Sending via OpenClaw
+## Output Format
 
-All scripts send media through OpenClaw:
+All scripts output JSON to stdout. The agent reads the result and handles sending via OpenClaw.
 
-```bash
-openclaw message send \
-  --action send \
-  --channel "<TARGET_CHANNEL>" \
-  --message "<CAPTION>" \
-  --media "<MEDIA_URL>"
+**selfie.sh output:**
+```json
+{"success": true, "image_url": "https://...", "mode": "direct", "provider": "replicate", "character": "Clawpal"}
 ```
 
-**Direct API fallback:**
-```bash
-curl -X POST "http://localhost:18789/message" \
-  -H "Authorization: Bearer $OPENCLAW_GATEWAY_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"action":"send","channel":"<CHANNEL>","message":"<CAPTION>","media":"<URL>"}'
+**voice.sh output:**
+```json
+{"success": true, "file": "/tmp/clawpal-voice-xxx.mp3", "voice": "en-US-GuyNeural", "character": "Clawpal", "size": 28944}
+```
+
+**video.sh output:**
+```json
+{"success": true, "video_url": "https://...", "model": "kwaivgi/kling-v2.6", "duration": 5, "character": "Clawpal"}
 ```
 
 ## Combined Examples
 
 **Selfie + voice note:**
 ```bash
-scripts/selfie.sh "at a cozy cafe" "#general" direct "Coffee time!"
-scripts/voice.sh "Hey! Just grabbed a latte, wish you were here" "#general"
+scripts/selfie.sh "at a cozy cafe" direct
+scripts/voice.sh "Hey! Just grabbed a latte, wish you were here"
 ```
 
 **Video selfie with narration:**
 ```bash
-scripts/video.sh "waving hello with a warm smile, cozy cafe background" "#general"
-scripts/voice.sh "Hey you! Just wanted to say hi" "#general"
+scripts/video.sh "waving hello with a warm smile, cozy cafe background"
+scripts/voice.sh "Hey you! Just wanted to say hi"
 ```
 
 ## Environment Variables

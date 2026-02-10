@@ -123,6 +123,27 @@ detect_provider() {
     exit 1
 }
 
+# Retry a curl command on failure
+# Usage: retry_curl <max_retries> <curl_args...>
+retry_curl() {
+    local max_retries="$1"; shift
+    local attempt=0 response
+    while [ "$attempt" -lt "$max_retries" ]; do
+        attempt=$((attempt + 1))
+        response=$(curl -s "$@") && {
+            # Check if response is valid (non-empty and not a curl error)
+            if [ -n "$response" ]; then
+                echo "$response"
+                return 0
+            fi
+        }
+        log_warn "Request failed (attempt $attempt/$max_retries), retrying in ${attempt}s..."
+        sleep "$attempt"
+    done
+    log_error "Request failed after $max_retries attempts"
+    return 1
+}
+
 # Poll a Replicate prediction until terminal state
 # Usage: poll_replicate <prediction_url> <token> [timeout_seconds]
 poll_replicate() {

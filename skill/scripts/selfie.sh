@@ -1,10 +1,11 @@
 #!/bin/bash
-# selfie.sh — Generate and send a selfie via AI image editing
+# selfie.sh — Generate a selfie via AI image editing
 #
-# Usage: selfie.sh "<context>" "<channel>" ["<mode>"] ["<caption>"]
+# Usage: selfie.sh "<context>" ["<mode>"]
 #
 # Reads appearance.reference_image and image.provider from character.yaml
 # Supports Replicate (Flux Kontext Pro) and fal.ai (Grok Imagine Edit)
+# Outputs the image URL — sending is handled by the agent
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/_common.sh"
@@ -26,18 +27,14 @@ PROVIDER=$(detect_provider)
 
 # Parse arguments
 USER_CONTEXT="${1:-}"
-CHANNEL="${2:-}"
-MODE="${3:-auto}"
-CAPTION="${4:-}"
+MODE="${2:-auto}"
 
-if [ -z "$USER_CONTEXT" ] || [ -z "$CHANNEL" ]; then
-    echo "Usage: $0 <context> <channel> [mode] [caption]"
+if [ -z "$USER_CONTEXT" ]; then
+    echo "Usage: $0 <context> [mode]"
     echo ""
     echo "Arguments:"
-    echo "  context   - Scene description (required)"
-    echo "  channel   - Target channel (required)"
-    echo "  mode      - mirror, direct, or auto (default: auto)"
-    echo "  caption   - Message caption (optional)"
+    echo "  context  - Scene description (required)"
+    echo "  mode     - mirror, direct, or auto (default: auto)"
     exit 1
 fi
 
@@ -74,22 +71,19 @@ if [ "$PROVIDER" = "replicate" ]; then
         --arg input_image "$REFERENCE_IMAGE" \
         '{input: {prompt: $prompt, input_image: $input_image, aspect_ratio: "1:1", output_format: "jpg"}}')
 
-    RESPONSE=$(curl -s -X POST "https://api.replicate.com/v1/models/black-forest-labs/flux-kontext-pro/predictions" \
+    RESPONSE=$(retry_curl 3 -X POST "https://api.replicate.com/v1/models/black-forest-labs/flux-kontext-pro/predictions" \
         -H "Authorization: Bearer $REPLICATE_API_TOKEN" \
         -H "Content-Type: application/json" \
         -H "Prefer: wait" \
         -d "$JSON_PAYLOAD")
 
-    # Check for immediate error
     if echo "$RESPONSE" | jq -e '.detail' >/dev/null 2>&1; then
-        ERROR_MSG=$(echo "$RESPONSE" | jq -r '.detail // "Unknown error"')
-        log_error "Replicate failed: $ERROR_MSG"
+        log_error "Replicate failed: $(echo "$RESPONSE" | jq -r '.detail // "Unknown error"')"
         exit 1
     fi
 
     STATUS=$(echo "$RESPONSE" | jq -r '.status // empty')
 
-    # Poll if still processing
     if [ "$STATUS" = "starting" ] || [ "$STATUS" = "processing" ]; then
         POLL_URL=$(echo "$RESPONSE" | jq -r '.urls.get // empty')
         if [ -z "$POLL_URL" ]; then
@@ -114,7 +108,7 @@ else
         --arg prompt "$EDIT_PROMPT" \
         '{image_url: $image_url, prompt: $prompt, num_images: 1, output_format: "jpeg"}')
 
-    RESPONSE=$(curl -s -X POST "https://fal.run/xai/grok-imagine-image/edit" \
+    RESPONSE=$(retry_curl 3 -X POST "https://fal.run/xai/grok-imagine-image/edit" \
         -H "Authorization: Key $FAL_KEY" \
         -H "Content-Type: application/json" \
         -d "$JSON_PAYLOAD")
@@ -135,31 +129,6 @@ fi
 
 log_info "Image ready: $IMAGE_URL"
 
-# Send via OpenClaw
-SEND_CAPTION="${CAPTION:-Selfie from $CHAR_NAME}"
-log_info "Sending to $CHANNEL"
-
-if command -v openclaw &>/dev/null; then
-    openclaw message send \
-        --action send \
-        --channel "$CHANNEL" \
-        --message "$SEND_CAPTION" \
-        --media "$IMAGE_URL"
-else
-    GATEWAY_URL="${OPENCLAW_GATEWAY_URL:-http://localhost:18789}"
-    GATEWAY_TOKEN="${OPENCLAW_GATEWAY_TOKEN:-}"
-
-    curl -s -X POST "$GATEWAY_URL/message" \
-        -H "Content-Type: application/json" \
-        ${GATEWAY_TOKEN:+-H "Authorization: Bearer $GATEWAY_TOKEN"} \
-        -d "$(jq -n \
-            --arg channel "$CHANNEL" \
-            --arg message "$SEND_CAPTION" \
-            --arg media "$IMAGE_URL" \
-            '{action: "send", channel: $channel, message: $message, media: $media}')"
-fi
-
-log_info "Done!"
-
-jq -n --arg url "$IMAGE_URL" --arg channel "$CHANNEL" --arg mode "$MODE" --arg provider "$PROVIDER" \
-    '{success: true, image_url: $url, channel: $channel, mode: $mode, provider: $provider}'
+# Output JSON result for the agent
+jq -n --arg url "$IMAGE_URL" --arg mode "$MODE" --arg provider "$PROVIDER" --arg character "$CHAR_NAME" \
+    '{success: true, image_url: $url, mode: $mode, provider: $provider, character: $character}'
