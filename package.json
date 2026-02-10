@@ -1,6 +1,6 @@
 {
   "name": "clawpal",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "AI character with selfie, voice, and video for OpenClaw",
   "bin": {
     "clawpal": "bin/cli.js"
