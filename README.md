@@ -12,7 +12,7 @@ npx clawpal@latest
 
 This will:
 1. Check OpenClaw is installed
-2. Guide you to get a fal.ai API key
+2. Guide you to choose a provider (Replicate or fal.ai) and set up API key
 3. Install the skill to `~/.openclaw/skills/clawpal-selfie/`
 4. Configure OpenClaw to use the skill
 5. Add the boyfriend persona to your agent's SOUL.md
@@ -35,13 +35,17 @@ Clawpal enables your OpenClaw agent to:
 ## Prerequisites
 
 - [OpenClaw](https://github.com/openclaw/openclaw) installed and configured
-- [fal.ai](https://fal.ai) account (free tier available)
+- One of the following image providers:
+  - [Replicate](https://replicate.com) account (uses Flux Kontext Pro)
+  - [fal.ai](https://fal.ai) account (uses Grok Imagine Edit)
 
 ## Manual Installation
 
 ### 1. Get API Key
 
-Visit [fal.ai/dashboard/keys](https://fal.ai/dashboard/keys) and create an API key.
+Choose one provider:
+- **Replicate**: Get token from [replicate.com/account/api-tokens](https://replicate.com/account/api-tokens)
+- **fal.ai**: Get key from [fal.ai/dashboard/keys](https://fal.ai/dashboard/keys)
 
 ### 2. Clone the Skill
 
@@ -60,13 +64,15 @@ Add to `~/.openclaw/openclaw.json`:
       "clawpal-selfie": {
         "enabled": true,
         "env": {
-          "FAL_KEY": "your_fal_key_here"
+          "REPLICATE_API_TOKEN": "your_replicate_token_here"
         }
       }
     }
   }
 }
 ```
+
+> Or use `"FAL_KEY": "your_fal_key_here"` if using fal.ai instead.
 
 ### 4. Update SOUL.md
 
@@ -83,7 +89,7 @@ When users ask for pictures, use the clawpal-selfie skill.
 
 ### Changing the Reference Image
 
-Replace `assets/clawpal.png` with your own character image, then update the CDN URL in:
+Replace `assets/clawpal.jpg` with your own character image, then update the CDN URL in:
 - `SKILL.md` (multiple references)
 - `skill/SKILL.md`
 - `bin/cli.js` (identity avatar)
@@ -105,7 +111,8 @@ Once installed, your agent responds to:
 
 ## Technical Details
 
-- **Image Generation**: xAI Grok Imagine (image edit) via fal.ai
+- **Image Editing**: Replicate (Flux Kontext Pro) or fal.ai (Grok Imagine Edit)
+- **Provider Detection**: Auto-detects from available API keys (`REPLICATE_API_TOKEN` > `FAL_KEY`)
 - **Messaging**: OpenClaw Gateway API
 - **Supported Platforms**: Discord, Telegram, WhatsApp, Slack, Signal, MS Teams
 - **Consistent Appearance**: All selfies are edited from a fixed reference image

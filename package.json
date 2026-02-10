@@ -1,7 +1,7 @@
 {
   "name": "clawpal",
   "version": "1.0.0",
-  "description": "Add selfie superpowers to your OpenClaw AI boyfriend using xAI Grok Imagine",
+  "description": "Add selfie superpowers to your OpenClaw AI boyfriend with AI image editing",
   "bin": {
     "clawpal": "./bin/cli.js"
   },
@@ -18,15 +18,16 @@
     "grok",
     "imagine",
     "xai",
-    "aurora",
     "fal.ai",
+    "replicate",
+    "flux-kontext",
     "selfie",
     "ai-agent",
     "ai-boyfriend",
-    "image-generation",
+    "image-editing",
     "messaging"
   ],
-  "author": "",
+  "author": "smartchainark",
   "license": "MIT",
   "repository": {
     "type": "git",

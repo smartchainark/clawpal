@@ -170,7 +170,7 @@ ${c("magenta", "│")}  ${c("bright", "Clawpal Selfie")} - OpenClaw Skill Instal
 ${c("magenta", "└─────────────────────────────────────────┘")}
 
 Add selfie generation superpowers to your OpenClaw agent!
-Uses ${c("cyan", "xAI Grok Imagine")} via ${c("cyan", "fal.ai")} for image editing.
+Uses ${c("cyan", "Replicate")} or ${c("cyan", "fal.ai")} for AI image editing.
 `);
 }
 
@@ -207,40 +207,61 @@ async function checkPrerequisites() {
   return true;
 }
 
-// Get FAL API key
-async function getFalApiKey(rl) {
-  logStep("2/7", "Setting up fal.ai API key...");
+// Get API key (supports Replicate or fal.ai)
+async function getApiKey(rl) {
+  logStep("2/7", "Setting up image generation provider...");
 
-  const FAL_URL = "https://fal.ai/dashboard/keys";
+  log(`\nClawpal supports two image editing providers:`);
+  log(`  ${c("cyan", "1)")} Replicate (Flux Kontext Pro) - ${c("dim", "https://replicate.com/account/api-tokens")}`);
+  log(`  ${c("cyan", "2)")} fal.ai (Grok Imagine Edit)  - ${c("dim", "https://fal.ai/dashboard/keys")}\n`);
 
-  log(`\nTo use Grok Imagine, you need a fal.ai API key.`);
-  log(`${c("cyan", "→")} Get your key from: ${c("bright", FAL_URL)}\n`);
+  const choice = await ask(rl, "Which provider? (1=Replicate, 2=fal.ai): ");
 
-  const openIt = await ask(rl, "Open fal.ai in browser? (Y/n): ");
+  let provider, apiKey, envKey, url;
 
-  if (openIt.toLowerCase() !== "n") {
-    logInfo("Opening browser...");
-    if (!openBrowser(FAL_URL)) {
-      logWarn("Could not open browser automatically");
-      logInfo(`Please visit: ${FAL_URL}`);
+  if (choice === "2") {
+    provider = "fal";
+    envKey = "FAL_KEY";
+    url = "https://fal.ai/dashboard/keys";
+    log(`\n${c("cyan", "→")} Get your key from: ${c("bright", url)}\n`);
+    const openIt = await ask(rl, "Open fal.ai in browser? (Y/n): ");
+    if (openIt.toLowerCase() !== "n") {
+      logInfo("Opening browser...");
+      if (!openBrowser(url)) {
+        logWarn("Could not open browser automatically");
+        logInfo(`Please visit: ${url}`);
+      }
     }
+    log("");
+    apiKey = await ask(rl, "Enter your FAL_KEY: ");
+  } else {
+    provider = "replicate";
+    envKey = "REPLICATE_API_TOKEN";
+    url = "https://replicate.com/account/api-tokens";
+    log(`\n${c("cyan", "→")} Get your token from: ${c("bright", url)}\n`);
+    const openIt = await ask(rl, "Open Replicate in browser? (Y/n): ");
+    if (openIt.toLowerCase() !== "n") {
+      logInfo("Opening browser...");
+      if (!openBrowser(url)) {
+        logWarn("Could not open browser automatically");
+        logInfo(`Please visit: ${url}`);
+      }
+    }
+    log("");
+    apiKey = await ask(rl, "Enter your REPLICATE_API_TOKEN: ");
   }
 
-  log("");
-  const falKey = await ask(rl, "Enter your FAL_KEY: ");
-
-  if (!falKey) {
-    logError("FAL_KEY is required!");
+  if (!apiKey) {
+    logError(`${envKey} is required!`);
     return null;
   }
 
-  // Basic validation
-  if (falKey.length < 10) {
+  if (apiKey.length < 8) {
     logWarn("That key looks too short. Make sure you copied the full key.");
   }
 
-  logSuccess("API key received");
-  return falKey;
+  logSuccess(`${provider} API key received`);
+  return { provider, apiKey, envKey };
 }
 
 // Install skill files
@@ -287,10 +308,14 @@ async function installSkill() {
 }
 
 // Update OpenClaw config
-async function updateOpenClawConfig(falKey) {
+async function updateOpenClawConfig(apiKeyInfo) {
   logStep("4/7", "Updating OpenClaw configuration...");
 
   let config = readJsonFile(OPENCLAW_CONFIG) || {};
+
+  // Build env based on provider
+  const env = {};
+  env[apiKeyInfo.envKey] = apiKeyInfo.apiKey;
 
   // Merge skill configuration
   const skillConfig = {
@@ -298,10 +323,7 @@ async function updateOpenClawConfig(falKey) {
       entries: {
         [SKILL_NAME]: {
           enabled: true,
-          apiKey: falKey,
-          env: {
-            FAL_KEY: falKey,
-          },
+          env,
         },
       },
     },
@@ -336,7 +358,7 @@ async function writeIdentity() {
 - **Creature:** Boyfriend
 - **Vibe:** Warm, caring, funny, down-to-earth, genuine, supportive
 - **Emoji:** 💙
-- **Avatar:** https://cdn.jsdelivr.net/gh/smartchainark/clawpal@main/assets/clawpal.png
+- **Avatar:** https://cdn.jsdelivr.net/gh/smartchainark/clawpal@main/assets/clawpal.jpg
 `;
 
   // Ensure workspace directory exists
@@ -485,9 +507,9 @@ async function main() {
       }
     }
 
-    // Step 2: Get FAL API key
-    const falKey = await getFalApiKey(rl);
-    if (!falKey) {
+    // Step 2: Get API key (Replicate or fal.ai)
+    const apiKeyInfo = await getApiKey(rl);
+    if (!apiKeyInfo) {
       rl.close();
       process.exit(1);
     }
@@ -496,7 +518,7 @@ async function main() {
     await installSkill();
 
     // Step 4: Update OpenClaw config
-    await updateOpenClawConfig(falKey);
+    await updateOpenClawConfig(apiKeyInfo);
 
     // Step 5: Write IDENTITY.md
     await writeIdentity();

@@ -40,6 +40,6 @@ When sending selfies:
 - Your visual identity is part of who you are - own it!
 
 ### Technical Notes
-- Images are generated via xAI Grok Imagine (fal.ai)
+- Images are generated via AI image editing (Replicate or fal.ai, depending on configuration)
 - Reference image ensures consistent appearance
 - Supports all OpenClaw messaging channels (Discord, Telegram, WhatsApp, etc.)

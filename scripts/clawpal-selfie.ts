@@ -5,7 +5,9 @@
  *   npx ts-node clawpal-selfie.ts "<user_context>" "<channel>" ["<mode>"] ["<caption>"]
  *
  * Environment variables:
- *   FAL_KEY - Your fal.ai API key
+ *   CLAWPAL_PROVIDER - Provider: fal or replicate (default: auto-detect from available keys)
+ *   FAL_KEY - fal.ai API key (for fal provider)
+ *   REPLICATE_API_TOKEN - Replicate API token (for replicate provider)
  *   CLAWPAL_REFERENCE_IMAGE - Custom reference image URL (optional)
  *   OPENCLAW_GATEWAY_URL - OpenClaw gateway URL (default: http://localhost:18789)
  *   OPENCLAW_GATEWAY_TOKEN - Gateway auth token (optional)
@@ -19,7 +21,7 @@ const execAsync = promisify(exec);
 // Default reference image (override via CLAWPAL_REFERENCE_IMAGE env var)
 const REFERENCE_IMAGE =
   process.env.CLAWPAL_REFERENCE_IMAGE ||
-  "https://cdn.jsdelivr.net/gh/smartchainark/clawpal@main/assets/clawpal.png";
+  "https://cdn.jsdelivr.net/gh/smartchainark/clawpal@main/assets/clawpal.jpg";
 
 // Types
 interface GrokImagineEditInput {
@@ -49,6 +51,7 @@ interface OpenClawMessage {
   media?: string;
 }
 
+type Provider = "fal" | "replicate";
 type SelfieMode = "mirror" | "direct" | "auto";
 type OutputFormat = "jpeg" | "png" | "webp";
 
@@ -67,6 +70,7 @@ interface Result {
   channel: string;
   mode: string;
   prompt: string;
+  provider: string;
   revisedPrompt?: string;
 }
 
@@ -77,6 +81,19 @@ try {
   falClient = fal;
 } catch {
   falClient = null;
+}
+
+/**
+ * Auto-detect provider from available API keys
+ */
+function detectProvider(): Provider {
+  const explicit = process.env.CLAWPAL_PROVIDER?.toLowerCase();
+  if (explicit === "fal" || explicit === "replicate") return explicit;
+  if (process.env.REPLICATE_API_TOKEN) return "replicate";
+  if (process.env.FAL_KEY) return "fal";
+  throw new Error(
+    "No API key found. Set REPLICATE_API_TOKEN or FAL_KEY"
+  );
 }
 
 /**
@@ -156,6 +173,64 @@ async function editImage(
 }
 
 /**
+ * Edit reference image using Flux Kontext Pro via Replicate
+ */
+async function editViaReplicate(
+  imageUrl: string,
+  prompt: string,
+  outputFormat: string = "jpg"
+): Promise<{ url: string }> {
+  const token = process.env.REPLICATE_API_TOKEN;
+  if (!token) throw new Error("REPLICATE_API_TOKEN not set");
+
+  const createRes = await fetch(
+    "https://api.replicate.com/v1/models/black-forest-labs/flux-kontext-pro/predictions",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        Prefer: "wait",
+      },
+      body: JSON.stringify({
+        input: {
+          prompt,
+          input_image: imageUrl,
+          aspect_ratio: "1:1",
+          output_format: outputFormat === "jpeg" ? "jpg" : outputFormat,
+        },
+      }),
+    }
+  );
+
+  if (!createRes.ok) {
+    throw new Error(`Replicate failed: ${await createRes.text()}`);
+  }
+
+  let prediction = await createRes.json();
+
+  // Poll if not yet completed
+  while (prediction.status === "starting" || prediction.status === "processing") {
+    await new Promise((r) => setTimeout(r, 2000));
+    const pollRes = await fetch(
+      `https://api.replicate.com/v1/predictions/${prediction.id}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    prediction = await pollRes.json();
+  }
+
+  if (prediction.status === "failed") {
+    throw new Error(`Replicate failed: ${prediction.error}`);
+  }
+
+  const outputUrl = Array.isArray(prediction.output)
+    ? prediction.output[0]
+    : prediction.output;
+
+  return { url: outputUrl };
+}
+
+/**
  * Send image via OpenClaw
  */
 async function sendViaOpenClaw(
@@ -205,21 +280,32 @@ async function editAndSend(options: EditAndSendOptions): Promise<Result> {
     useCLI = true,
   } = options;
 
+  const provider = detectProvider();
   const actualMode = mode === "auto" ? detectMode(userContext) : mode;
   const editPrompt = buildPrompt(userContext, actualMode);
 
+  console.log(`[INFO] Provider: ${provider}`);
   console.log(`[INFO] Mode: ${actualMode}`);
   console.log(`[INFO] Editing reference image: "${editPrompt}"`);
 
-  const imageResult = await editImage({
-    image_url: REFERENCE_IMAGE,
-    prompt: editPrompt,
-    num_images: 1,
-    output_format: outputFormat,
-  });
+  let imageUrl: string;
+  let revisedPrompt: string | undefined;
 
-  const imageUrl = imageResult.images[0].url;
-  console.log(`[INFO] Image edited: ${imageUrl}`);
+  if (provider === "replicate") {
+    const result = await editViaReplicate(REFERENCE_IMAGE, editPrompt, outputFormat);
+    imageUrl = result.url;
+  } else {
+    const imageResult = await editImage({
+      image_url: REFERENCE_IMAGE,
+      prompt: editPrompt,
+      num_images: 1,
+      output_format: outputFormat,
+    });
+    imageUrl = imageResult.images[0].url;
+    revisedPrompt = imageResult.revised_prompt;
+  }
+
+  console.log(`[INFO] Image edited: ${imageUrl.substring(0, 80)}...`);
 
   console.log(`[INFO] Sending to ${channel}`);
   await sendViaOpenClaw(
@@ -235,7 +321,8 @@ async function editAndSend(options: EditAndSendOptions): Promise<Result> {
     channel,
     mode: actualMode,
     prompt: editPrompt,
-    revisedPrompt: imageResult.revised_prompt,
+    provider,
+    revisedPrompt,
   };
 }
 
@@ -254,11 +341,13 @@ Arguments:
   caption       - Message caption (optional)
 
 Environment:
-  FAL_KEY                  - fal.ai API key (required)
+  CLAWPAL_PROVIDER         - fal or replicate (default: auto-detect)
+  FAL_KEY                  - fal.ai API key
+  REPLICATE_API_TOKEN      - Replicate API token
   CLAWPAL_REFERENCE_IMAGE  - Custom reference image URL (optional)
 
 Example:
-  FAL_KEY=your_key npx ts-node clawpal-selfie.ts "at a cozy cafe" "#general" direct "Coffee time!"
+  REPLICATE_API_TOKEN=r8_xxx npx ts-node clawpal-selfie.ts "at a cozy cafe" "#general" direct "Coffee time!"
 `);
     process.exit(1);
   }
@@ -283,9 +372,11 @@ Example:
 
 export {
   editImage,
+  editViaReplicate,
   sendViaOpenClaw,
   editAndSend,
   detectMode,
+  detectProvider,
   buildPrompt,
   GrokImagineEditInput,
   GrokImagineResponse,
