@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Clawpal 💙 视频聊天</title>
+    <title>Clawpal 视频聊天</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
@@ -35,6 +35,7 @@
             background: var(--bg-gradient);
             color: var(--text);
             min-height: 100vh;
+            height: 100vh;
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -82,11 +83,6 @@
             color: var(--text);
         }
 
-        .logo-icon {
-            font-size: 2rem;
-            animation: pulse 2s ease-in-out infinite;
-        }
-
         @keyframes pulse {
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.05); }
@@ -97,20 +93,21 @@
             align-items: center;
             gap: 0.5rem;
             padding: 0.5rem 1rem;
-            background: var(--surface);
-            border: 1px solid var(--border);
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
             border-radius: 2rem;
             font-size: 0.875rem;
             font-weight: 500;
             backdrop-filter: blur(10px);
+            color: #10B981;
         }
 
         .status-dot {
             width: 8px;
             height: 8px;
             border-radius: 50%;
-            background: var(--primary);
-            box-shadow: 0 0 10px var(--primary-glow);
+            background: #10B981;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
             animation: blink 2s ease-in-out infinite;
         }
 
@@ -128,19 +125,24 @@
             padding: 2rem 3rem;
             position: relative;
             z-index: 10;
+            min-height: 0;
         }
 
         .video-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 3rem;
-            max-width: 1400px;
+            gap: 2rem;
+            max-width: 1600px;
             width: 100%;
+            height: 100%;
+            max-height: calc(100vh - 250px);
         }
 
         .video-panel {
             position: relative;
             aspect-ratio: 4/3;
+            width: 100%;
+            height: 100%;
             border-radius: 24px;
             overflow: hidden;
             background: rgba(0, 0, 0, 0.4);
@@ -148,6 +150,16 @@
             border: 2px solid var(--border);
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
+
+        .video-panel img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
 
         .video-panel:hover {
             transform: translateY(-8px);
@@ -161,6 +173,9 @@
         }
 
         video {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
             object-fit: cover;
@@ -223,7 +238,7 @@
             border: 1px solid var(--border);
             font-size: 0.875rem;
             font-weight: 600;
-            display: flex;
+            display: none;
             align-items: center;
             gap: 0.75rem;
             animation: slideIn 0.5s ease-out;
@@ -367,6 +382,9 @@
             position: fixed;
             top: 2rem;
             right: 2rem;
+            left: 2rem;
+            max-width: 400px;
+            margin: 0 auto;
             padding: 1rem 1.5rem;
             background: rgba(0, 0, 0, 0.9);
             backdrop-filter: blur(20px);
@@ -375,16 +393,25 @@
             box-shadow: var(--shadow);
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 1rem;
             z-index: 100;
             animation: slideInNotif 0.5s ease-out;
             opacity: 0;
             pointer-events: none;
+            font-size: 0.875rem;
         }
 
         .notification.show {
             opacity: 1;
             pointer-events: all;
+        }
+
+        @media (min-width: 640px) {
+            .notification {
+                left: auto;
+                margin: 0;
+            }
         }
 
         @keyframes slideInNotif {
@@ -446,10 +473,19 @@
         }
 
         /* 响应式 */
-        @media (max-width: 1024px) {
+
+        /* 大屏桌面优化 */
+        @media (min-width: 1400px) {
             .video-container {
-                grid-template-columns: 1fr;
-                gap: 2rem;
+                gap: 3rem;
+            }
+        }
+
+        /* 中等屏幕（平板横屏 / 小屏桌面） */
+        @media (max-width: 1200px) {
+            .video-container {
+                gap: 1.5rem;
+                max-height: calc(100vh - 230px);
             }
 
             header {
@@ -459,13 +495,179 @@
             main {
                 padding: 1.5rem 2rem;
             }
+
+            .logo {
+                font-size: 1.25rem;
+            }
+
+            .video-label {
+                font-size: 1.1rem;
+            }
+        }
+
+        /* 平板竖屏 / 大屏手机横屏 */
+        @media (max-width: 900px) {
+            .video-container {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+                max-height: none;
+            }
+
+            .video-panel {
+                aspect-ratio: 16/9;
+                max-height: 45vh;
+            }
+
+            header {
+                padding: 1.25rem 1.5rem;
+            }
+
+            main {
+                padding: 1.25rem 1.5rem 8rem;
+                overflow-y: auto;
+            }
+
+            .controls {
+                bottom: 2rem;
+                gap: 1rem;
+                padding: 1rem 1.5rem;
+            }
+
+            .control-btn {
+                width: 48px;
+                height: 48px;
+                font-size: 1.25rem;
+            }
+        }
+
+        /* 移动端 */
+        @media (max-width: 640px) {
+            header {
+                padding: 1rem;
+            }
+
+            .logo {
+                font-size: 1.1rem;
+            }
+
+            .logo-icon {
+                font-size: 1.5rem;
+            }
+
+            .status-badge {
+                font-size: 0.75rem;
+                padding: 0.4rem 0.8rem;
+            }
+
+            main {
+                padding: 1rem 1rem 8rem;
+            }
+
+            .video-container {
+                gap: 1rem;
+            }
+
+            .video-panel {
+                border-radius: 16px;
+                max-height: 40vh;
+            }
+
+            .video-overlay {
+                padding: 1rem;
+            }
+
+            .video-label {
+                font-size: 1rem;
+            }
+
+            .video-status {
+                font-size: 0.75rem;
+            }
+
+            .ai-state {
+                top: 1rem;
+                right: 1rem;
+                padding: 0.5rem 1rem;
+                font-size: 0.75rem;
+            }
+
+            .ai-state-icon {
+                width: 20px;
+                height: 20px;
+            }
+
+            .controls {
+                bottom: 1.5rem;
+                gap: 0.75rem;
+                padding: 0.75rem 1.25rem;
+            }
+
+            .control-btn {
+                width: 44px;
+                height: 44px;
+                font-size: 1.1rem;
+            }
+
+            .control-btn::before {
+                font-size: 0.7rem;
+                padding: 0.4rem 0.8rem;
+            }
+        }
+
+        /* 小屏手机 */
+        @media (max-width: 480px) {
+            .video-panel {
+                max-height: 35vh;
+            }
+
+            .controls {
+                bottom: 1rem;
+                gap: 0.5rem;
+                padding: 0.6rem 1rem;
+            }
+
+            .control-btn {
+                width: 40px;
+                height: 40px;
+                font-size: 1rem;
+            }
+        }
+
+        /* 横屏模式优化 */
+        @media (max-height: 600px) and (orientation: landscape) {
+            header {
+                padding: 0.75rem 1.5rem;
+            }
+
+            main {
+                padding: 0.75rem 1.5rem 6rem;
+            }
+
+            .video-container {
+                grid-template-columns: 1fr 1fr;
+                gap: 1rem;
+            }
+
+            .video-panel {
+                aspect-ratio: 16/9;
+                max-height: calc(100vh - 180px);
+            }
+
+            .controls {
+                bottom: 1rem;
+                padding: 0.75rem 1.25rem;
+            }
+
+            .control-btn {
+                width: 42px;
+                height: 42px;
+            }
         }
     </style>
 </head>
 <body>
     <header>
         <div class="logo">
-            <span class="logo-icon">💙</span>
             <span>Clawpal</span>
         </div>
         <div class="status-badge">
@@ -476,6 +678,31 @@
 
     <main>
         <div class="video-container">
+            <!-- AI 伴侣照片 -->
+            <div class="video-panel active" id="aiPanel" style="cursor: pointer;">
+                <img src="girl-avatar.jpg" alt="AI 伴侣" id="aiAvatar">
+                <video id="aiVideo" autoplay loop playsinline style="display: none;"></video>
+                <video id="girlVideo" playsinline loop style="display: none;"></video>
+                <div class="video-loading" id="aiLoading" style="display: none;">
+                    <div class="spinner"></div>
+                </div>
+                <div class="ai-state listening">
+                    <div class="ai-state-icon">
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                            <circle cx="6" cy="6" r="6" fill="white"/>
+                        </svg>
+                    </div>
+                    <span id="aiStateText">正在倾听...</span>
+                </div>
+                <div class="video-overlay">
+                    <div class="video-label">Chiffon</div>
+                    <div class="video-status">
+                        <span></span>
+                    </div>
+                </div>
+                <!-- <div class="audio-visualizer" id="audioVisualizer"></div> -->
+            </div>
+
             <!-- 用户视频 -->
             <div class="video-panel" id="userPanel">
                 <video id="localVideo" autoplay muted playsinline></video>
@@ -489,29 +716,6 @@
                         <span>摄像头已启用</span>
                     </div>
                 </div>
-            </div>
-
-            <!-- AI 视频 -->
-            <div class="video-panel active" id="aiPanel">
-                <video id="aiVideo" autoplay loop playsinline></video>
-                <div class="video-loading" id="aiLoading" style="display: none;">
-                    <div class="spinner"></div>
-                </div>
-                <div class="ai-state listening">
-                    <div class="ai-state-icon">
-                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                            <circle cx="6" cy="6" r="6" fill="white"/>
-                        </svg>
-                    </div>
-                    <span id="aiStateText">正在倾听...</span>
-                </div>
-                <div class="video-overlay">
-                    <div class="video-label">Clawpal</div>
-                    <div class="video-status">
-                        <span>AI 视频</span>
-                    </div>
-                </div>
-                <!-- <div class="audio-visualizer" id="audioVisualizer"></div> -->
             </div>
         </div>
     </main>
@@ -545,6 +749,9 @@
         // DOM 元素
         const localVideo = document.getElementById('localVideo');
         const aiVideo = document.getElementById('aiVideo');
+        const girlVideo = document.getElementById('girlVideo');
+        const aiAvatar = document.getElementById('aiAvatar');
+        const aiPanel = document.getElementById('aiPanel');
         const userLoading = document.getElementById('userLoading');
         const aiLoading = document.getElementById('aiLoading');
         const aiStateEl = document.querySelector('.ai-state');
@@ -628,8 +835,8 @@
         // 初始化
         async function init() {
             try {
-                // 连接 WebSocket 桥接服务器
-                connectBridge();
+                // 连接 WebSocket 桥接服务器（已暂停）
+                // connectBridge();
 
                 // 获取用户摄像头
                 localStream = await navigator.mediaDevices.getUserMedia({
@@ -641,8 +848,8 @@
                 userLoading.style.display = 'none';
                 showNotification('✅ 摄像头已启用');
 
-                // 开始定时捕获
-                startCapture();
+                // 开始定时捕获（已暂停）
+                // startCapture();
 
             } catch (err) {
                 console.error('获取摄像头失败:', err);
@@ -709,12 +916,35 @@
                 return;
             }
 
+            // 停止女孩视频播放，重置状态
+            if (isVideoPlaying) {
+                girlVideo.pause();
+                girlVideo.currentTime = 0;
+                isVideoPlaying = false;
+            }
+
+            // 隐藏图片和女孩视频，显示 AI 视频
+            aiAvatar.style.display = 'none';
+            girlVideo.style.display = 'none';
+            aiVideo.style.display = 'block';
+            aiPanel.style.cursor = 'pointer';
+
             aiVideo.src = url;
             aiVideo.load();
             aiVideo.play().catch(err => {
                 console.error('播放视频失败:', err);
                 showNotification('❌ 视频播放失败');
+                // 播放失败，恢复显示图片
+                aiAvatar.style.display = 'block';
+                aiVideo.style.display = 'none';
             });
+
+            // 视频播放结束后，恢复显示图片
+            aiVideo.onended = () => {
+                aiAvatar.style.display = 'block';
+                aiVideo.style.display = 'none';
+                updateAIState('listening');
+            };
 
             console.log('✅ 加载 AI 视频:', url);
         }
@@ -764,6 +994,66 @@
                 }
                 window.close();
             }
+        });
+
+        // 点击 AI 面板切换视频/图片
+        let isVideoPlaying = false;
+
+        aiPanel.addEventListener('click', (e) => {
+            console.log('🎬 点击了 AI 面板');
+
+            // 如果正在播放视频，关闭视频返回图片
+            if (isVideoPlaying) {
+                console.log('⏹️ 关闭视频，返回图片');
+                girlVideo.pause();
+                girlVideo.currentTime = 0;
+                aiAvatar.style.display = 'block';
+                girlVideo.style.display = 'none';
+                isVideoPlaying = false;
+                aiPanel.style.cursor = 'pointer';
+                updateAIState('listening');
+                return;
+            }
+
+            console.log('✅ 准备播放视频');
+
+            // 隐藏图片，显示视频
+            aiAvatar.style.display = 'none';
+            girlVideo.style.display = 'block';
+            isVideoPlaying = true;
+
+            // 保持 cursor pointer
+            aiPanel.style.cursor = 'pointer';
+
+            // 设置视频源
+            girlVideo.src = 'girl-video.mp4';
+            girlVideo.load();
+
+            // 立即播放
+            const playPromise = girlVideo.play();
+
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    console.log('✅ 视频开始播放');
+                    updateAIState('speaking');
+                }).catch(err => {
+                    console.error('❌ 播放视频失败:', err);
+                    // 播放失败，恢复显示图片
+                    aiAvatar.style.display = 'block';
+                    girlVideo.style.display = 'none';
+                    isVideoPlaying = false;
+                });
+            }
+        });
+
+        // 视频循环播放（已通过 loop 属性实现）
+        girlVideo.addEventListener('play', () => {
+            console.log('▶️ 视频开始播放');
+        });
+
+        girlVideo.addEventListener('error', (e) => {
+            console.error('❌ 视频加载错误:', e);
+            showNotification('❌ 视频加载失败');
         });
 
         // 页面加载完成后初始化
