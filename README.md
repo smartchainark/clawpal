@@ -2,167 +2,165 @@
 
 赛博陪伴，一切皆可。男友、女友、宠物、亲人——给你的 AI 一张脸、一个声音、一段视频。
 
-Cyber companion for OpenClaw. Selfie, voice, and video — give your AI a face, a voice, and presence.
+> 基于 David (Dohyun) Im 的 [Clawra](https://github.com/SumeLabs/clawra) 项目。扩展了语音、视频和多角色支持。
 
-> Fork of [Clawra](https://github.com/SumeLabs/clawra) by David (Dohyun) Im. Extended with voice, video, and multi-character support.
+## 快速开始
 
-## Quick Start
-
-### Interactive Installation
+### 交互式安装
 
 ```bash
 npx clawpal@latest
 ```
 
-3 steps:
-1. **Pick a character** — or create your own
-2. **Enter API key** — Replicate for selfie + video (voice is free)
-3. **Done** — start chatting
+三步完成：
+1. **选择角色** — 或创建你自己的
+2. **输入 API 密钥** — Replicate 用于自拍 + 视频（语音免费）
+3. **完成** — 开始聊天
 
-### Automated Installation
+### 自动化安装
 
 ```bash
-# Install with all options
+# 带全部选项安装
 npx clawpal@latest --character girlfriend --replicate-token r8_xxx --yes
 
-# Install to custom workspace
+# 安装到自定义工作区
 npx clawpal@latest --character girlfriend --workspace ~/.openclaw/workspace-chiffon -y
 
-# Available flags:
-#   --character <name>        boyfriend, girlfriend, pet, or 1-3
-#   --replicate-token <token> Replicate API token
-#   --fal-key <key>          fal.ai API key (alternative to Replicate)
-#   --reference-image <url>  Custom reference image URL
-#   --workspace <path>       Custom workspace path
-#   -y, --yes                Skip all prompts
+# 可用参数：
+#   --character <name>        boyfriend、girlfriend、pet，或 1-3
+#   --replicate-token <token> Replicate API 密钥
+#   --fal-key <key>          fal.ai API 密钥（Replicate 的替代方案）
+#   --reference-image <url>  自定义参考图片 URL
+#   --workspace <path>       自定义工作区路径
+#   -y, --yes                跳过所有提示
 ```
 
-## Built-in Characters
+## 内置角色
 
-| Character | Type | Vibe |
-|-----------|------|------|
-| **Clawpal** | Cyber Boyfriend | Warm, caring, funny, down-to-earth |
-| **Chiffon** | Cyber Girlfriend | Witty, creative, curious, slightly chaotic |
-| **Mochi** | Cyber Pet | Sassy, dramatic, food-motivated |
+| 角色 | 类型 | 风格 |
+|------|------|------|
+| **Clawpal** | 赛博男友 | 温暖、体贴、幽默、接地气 |
+| **Chiffon** | 赛博女友 | 机智、有创意、好奇心强、略带混乱 |
+| **Mochi** | 赛博宠物 | 傲娇、戏精、吃货 |
 
-These are just starting points. Create any character you want — a cyber parent, a childhood friend, a fictional hero, a talking plant. Everything is driven by one `character.yaml` file.
+这些只是起点。你可以创建任何角色——赛博家长、儿时玩伴、虚拟英雄、会说话的植物。一切由一个 `character.yaml` 文件驱动。
 
-## Create Your Own Character
+## 创建自定义角色
 
-Copy a template and edit:
+复制模板并编辑：
 
 ```bash
 cp characters/boyfriend.yaml characters/my-character.yaml
 ```
 
-Define everything in one file:
+在一个文件中定义所有内容：
 
 ```yaml
 name: Your Character
 age: 30
-tagline: "Your custom cyber companion"
+tagline: "你的自定义赛博伴侣"
 emoji: "\U0001F916"
 
 appearance:
   reference_image: "https://your-image-url.jpg"
-  description: "How they look"
+  description: "外貌描述"
 
 voice:
-  name: en-US-GuyNeural    # Any Edge TTS voice
+  name: zh-CN-YunxiNeural    # 任意 Edge TTS 语音
   rate: "+0%"
   pitch: "+0Hz"
 
 personality:
-  vibe: "describe the vibe"
+  vibe: "描述风格"
   backstory: |
-    Their story...
+    角色故事...
   traits:
-    - trait one
-    - trait two
+    - 特质一
+    - 特质二
   speaking_style: |
-    How they talk...
+    说话方式...
 ```
 
-## Capabilities
+## 功能
 
-### Selfie
-AI-edited selfies from a reference image. Mirror mode (full-body) and direct mode (close-up).
+### 自拍
+基于参考图片的 AI 编辑自拍。镜像模式（全身）和直拍模式（特写）。
 
-- **Providers**: Replicate (Flux Kontext Pro) / fal.ai (Grok Imagine Edit)
-- **Trigger**: "Send me a selfie", "What are you doing?"
+- **服务商**：Replicate (Flux Kontext Pro) / fal.ai (Grok Imagine Edit)
+- **触发方式**："发张自拍给我"、"你在干嘛？"
 
-### Voice
-Text-to-speech voice messages. Free, no API key needed.
+### 语音
+文本转语音消息。免费，无需 API 密钥。
 
-- **Engine**: Microsoft Edge TTS (100+ voices, multilingual)
-- **Trigger**: "Send a voice message", "Say good morning"
+- **引擎**：Microsoft Edge TTS（100+ 种语音，支持多语言）
+- **触发方式**："发条语音"、"说声早安"
 
-### Video
-Short video clips from a start image.
+### 视频
+从起始图片生成短视频。
 
-- **Model**: Kling v2.6 on Replicate
-- **Trigger**: "Make a video of you waving", "Send a video clip"
+- **模型**：Replicate 上的 Kling v2.6
+- **触发方式**："拍个你挥手的视频"、"发个视频"
 
-## How It Works
+## 工作原理
 
 ```
-User: "Send me a selfie at a cafe"
+用户："在咖啡馆发张自拍给我"
   ↓
-Agent reads SKILL.md → calls selfie.sh with channel
+Agent 读取 SKILL.md → 调用 selfie.sh 并传入频道
   ↓
-Script generates image → sends via OpenClaw → user receives it
+脚本生成图片 → 通过 OpenClaw 发送 → 用户收到图片
 ```
 
-Scripts generate AND send. Direct and efficient.
+脚本负责生成并发送。简单高效。
 
-## Prerequisites
+## 前置条件
 
-- [OpenClaw](https://github.com/openclaw/openclaw) installed and configured
-- [Replicate](https://replicate.com) account (selfie + video) or [fal.ai](https://fal.ai) (selfie only)
-- Python 3 (Edge TTS auto-installs)
+- 已安装并配置 [OpenClaw](https://github.com/openclaw/openclaw)
+- [Replicate](https://replicate.com) 账号（用于自拍 + 视频）或 [fal.ai](https://fal.ai)（仅自拍）
+- Python 3（Edge TTS 会自动安装）
 
-## Manual Installation
+## 手动安装
 
 ```bash
-# 1. Clone
+# 1. 克隆仓库
 git clone https://github.com/smartchainark/clawpal ~/.openclaw/skills/clawpal
 
-# 2. Pick a character
+# 2. 选择角色
 cp characters/boyfriend.yaml ~/.openclaw/skills/clawpal/character.yaml
 
-# 3. Configure
-cat >> ~/.openclaw/openclaw.json << 'EOF'
+# 3. 配置（如果文件已存在，请手动编辑合并）
+cat > ~/.openclaw/openclaw.json << 'EOF'
 {"skills":{"entries":{"clawpal":{"enabled":true,"env":{"REPLICATE_API_TOKEN":"your_token"}}}}}
 EOF
 ```
 
-## Project Structure
+## 项目结构
 
 ```
 clawpal/
-├── bin/cli.js              # 3-step installer
-├── characters/             # Character templates
-│   ├── boyfriend.yaml      # Clawpal — cyber boyfriend
-│   ├── girlfriend.yaml     # Luna — cyber girlfriend
-│   └── pet.yaml            # Mochi — cyber pet
+├── bin/cli.js              # 三步安装器
+├── characters/             # 角色模板
+│   ├── boyfriend.yaml      # Clawpal — 赛博男友
+│   ├── girlfriend.yaml     # Chiffon — 赛博女友
+│   └── pet.yaml            # Mochi — 赛博宠物
 ├── scripts/
-│   ├── _common.sh          # Shared helpers (YAML parser, retry, polling)
+│   ├── _common.sh          # 公共工具（YAML 解析、重试、轮询）
 │   ├── selfie.sh           # → {image_url}
 │   ├── voice.sh            # → {file}
 │   └── video.sh            # → {video_url}
 ├── templates/
-│   ├── identity.md.tpl     # Identity template
+│   ├── identity.md.tpl     # 身份模板
 │   └── soul-injection.md.tpl
-├── skill/                  # Installed copy
-├── assets/clawpal.jpg      # Default reference image
-├── SKILL.md                # Skill definition
+├── skill/                  # 安装后的副本
+├── assets/clawpal.jpg      # 默认参考图片
+├── SKILL.md                # 技能定义
 └── package.json
 ```
 
-## Credits
+## 致谢
 
-Based on [Clawra](https://github.com/SumeLabs/clawra) by [SumeLabs](https://github.com/SumeLabs). Original concept by David (Dohyun) Im.
+基于 [SumeLabs](https://github.com/SumeLabs) 的 [Clawra](https://github.com/SumeLabs/clawra)。原始概念由 David (Dohyun) Im 设计。
 
-## License
+## 许可证
 
 MIT

@@ -454,7 +454,8 @@ ${c("magenta", "\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25
     }
 
     // Check reference image
-    let referenceImage = autoReferenceImage || chosen.appearance?.reference_image || "";
+    const originalReferenceImage = chosen.appearance?.reference_image || "";
+    let referenceImage = autoReferenceImage || originalReferenceImage;
 
     if (!referenceImage && !autoCharacter) {
       log("");
@@ -550,18 +551,20 @@ ${c("magenta", "\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25
     const charSrcPath = path.join(PACKAGE_ROOT, "characters", chosen._file);
     let charContent = fs.readFileSync(charSrcPath, "utf8");
 
-    // Patch reference_image if user provided one
-    if (
-      referenceImage &&
-      referenceImage !== (chosen.appearance?.reference_image || "")
-    ) {
-      // Replace in YAML content — find the reference_image line
-      charContent = charContent.replace(
-        /reference_image:\s*".*"/,
-        `reference_image: "${referenceImage}"`
-      );
-    } else if (referenceImage && !charContent.includes("reference_image:")) {
-      // This shouldn't happen with our templates, but just in case
+    // Patch reference_image if user provided a different one
+    if (referenceImage && referenceImage !== originalReferenceImage) {
+      if (charContent.includes("reference_image:")) {
+        charContent = charContent.replace(
+          /reference_image:\s*".*"/,
+          `reference_image: "${referenceImage}"`
+        );
+      } else {
+        // Template missing the field — inject under appearance:
+        charContent = charContent.replace(
+          /^(appearance:\s*\n)/m,
+          `$1  reference_image: "${referenceImage}"\n`
+        );
+      }
     }
 
     fs.writeFileSync(path.join(skillDest, "character.yaml"), charContent);
@@ -616,7 +619,7 @@ ${c("magenta", "\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25
     writeJsonFile(OPENCLAW_CONFIG, config);
     logSuccess("OpenClaw configured");
 
-    // 3e. Render and write IDENTITY.md
+    // 3f. Render and write IDENTITY.md
     const identityTplPath = path.join(
       PACKAGE_ROOT,
       "templates",
@@ -642,7 +645,7 @@ ${c("magenta", "\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25
     }
     logSuccess("IDENTITY.md created");
 
-    // 3f. Render and inject SOUL.md
+    // 3g. Render and inject SOUL.md
     const soulTplPath = path.join(
       PACKAGE_ROOT,
       "templates",
