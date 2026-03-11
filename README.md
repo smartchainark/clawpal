@@ -130,10 +130,24 @@ git clone https://github.com/smartchainark/clawpal ~/.openclaw/skills/clawpal
 # 2. Pick a character
 cp characters/boyfriend.yaml ~/.openclaw/skills/clawpal/character.yaml
 
-# 3. Configure
-cat >> ~/.openclaw/openclaw.json << 'EOF'
-{"skills":{"entries":{"clawpal":{"enabled":true,"env":{"REPLICATE_API_TOKEN":"your_token"}}}}}
-EOF
+# 3. Configure (add to your openclaw.json)
+```
+
+Add this to `~/.openclaw/openclaw.json`:
+
+```json
+{
+  "skills": {
+    "entries": {
+      "clawpal": {
+        "enabled": true,
+        "env": {
+          "REPLICATE_API_TOKEN": "your_token"
+        }
+      }
+    }
+  }
+}
 ```
 
 ## Project Structure
@@ -143,7 +157,7 @@ clawpal/
 ├── bin/cli.js              # 3-step installer
 ├── characters/             # Character templates
 │   ├── boyfriend.yaml      # Clawpal — cyber boyfriend
-│   ├── girlfriend.yaml     # Luna — cyber girlfriend
+│   ├── girlfriend.yaml     # Chiffon — cyber girlfriend
 │   └── pet.yaml            # Mochi — cyber pet
 ├── scripts/
 │   ├── _common.sh          # Shared helpers (YAML parser, retry, polling)
