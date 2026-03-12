@@ -12,8 +12,8 @@
  * Outputs JSON for shell parsing
  */
 
-import { existsSync, mkdirSync, writeFileSync } from 'fs';
-import { join, dirname } from 'path';
+import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'fs';
+import { join, dirname, extname } from 'path';
 import { fileURLToPath } from 'url';
 import { execFileSync } from 'child_process';
 import https from 'https';
@@ -106,22 +106,49 @@ async function waitForResult(client, jobId, timeout = 120000) {
   }
 }
 
-function downloadFile(url, filepath) {
+function downloadBuffer(url) {
   return new Promise((resolve, reject) => {
     const client = url.startsWith('https') ? https : http;
     client.get(url, (response) => {
       if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
-        return downloadFile(response.headers.location, filepath).then(resolve).catch(reject);
+        return downloadBuffer(response.headers.location).then(resolve).catch(reject);
       }
       const chunks = [];
       response.on('data', chunk => chunks.push(chunk));
-      response.on('end', () => {
-        writeFileSync(filepath, Buffer.concat(chunks));
-        resolve();
-      });
+      response.on('end', () => resolve(Buffer.concat(chunks)));
       response.on('error', reject);
     }).on('error', reject);
   });
+}
+
+function downloadFile(url, filepath) {
+  return downloadBuffer(url).then(buf => writeFileSync(filepath, buf));
+}
+
+/**
+ * Resolve an image source (local path, URL, or base64) to a base64 string.
+ * Hunyuan API accepts both URL and base64 in Images[], but URLs to overseas
+ * CDNs (e.g. jsdelivr) are unreachable from Tencent's servers. Converting
+ * to base64 locally ensures the reference image always works.
+ */
+async function resolveImageToBase64(source) {
+  // Already base64
+  if (source.startsWith('data:')) {
+    return source.replace(/^data:image\/\w+;base64,/, '');
+  }
+  if (!source.startsWith('http://') && !source.startsWith('https://')) {
+    // Local file path
+    if (!existsSync(source)) {
+      throw new Error(`Reference image not found: ${source}`);
+    }
+    console.error(`Reading local image: ${source}`);
+    return readFileSync(source).toString('base64');
+  }
+  // URL — download and convert
+  console.error(`Downloading reference image: ${source.substring(0, 80)}...`);
+  const buf = await downloadBuffer(source);
+  console.error(`Downloaded ${(buf.length / 1024).toFixed(0)}KB, converting to base64`);
+  return buf.toString('base64');
 }
 
 function parseArgs(args) {
@@ -156,7 +183,7 @@ async function main() {
 
   try {
     const client = createClient();
-    const images = args.image ? [args.image] : [];
+    const images = args.image ? [await resolveImageToBase64(args.image)] : [];
 
     console.error(`Submitting job: ${args.prompt.substring(0, 50)}...`);
     const jobId = await submitJob(client, args.prompt, images);

@@ -81,11 +81,21 @@ if [ "$PROVIDER" = "hunyuan" ]; then
         exit 1
     fi
 
-    RESPONSE=$(node "$HUNYUAN_SCRIPT" --prompt "$EDIT_PROMPT" --image "$REFERENCE_IMAGE" 2>&1)
+    # Prefer local asset over URL (avoids downloading from CDN that may be unreachable from China)
+    HUNYUAN_IMAGE="$REFERENCE_IMAGE"
+    if [[ "$REFERENCE_IMAGE" == http* ]]; then
+        LOCAL_ASSET="$SCRIPT_DIR/../assets/$(basename "$REFERENCE_IMAGE")"
+        if [ -f "$LOCAL_ASSET" ]; then
+            HUNYUAN_IMAGE="$(cd "$(dirname "$LOCAL_ASSET")" && pwd)/$(basename "$LOCAL_ASSET")"
+            log_info "Using local asset: $HUNYUAN_IMAGE"
+        fi
+    fi
+
+    RESPONSE=$(node "$HUNYUAN_SCRIPT" --prompt "$EDIT_PROMPT" --image "$HUNYUAN_IMAGE" 2>/tmp/hunyuan-stderr.log)
 
     # Check if response is valid JSON
     if ! echo "$RESPONSE" | jq -e '.success' >/dev/null 2>&1; then
-        log_error "Hunyuan script failed: $RESPONSE"
+        log_error "Hunyuan script failed: $RESPONSE $(cat /tmp/hunyuan-stderr.log 2>/dev/null)"
         exit 1
     fi
 
