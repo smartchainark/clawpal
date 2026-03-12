@@ -61,12 +61,15 @@ load_env
 
 # Validate API keys are available (after .env is loaded)
 validate_api_keys() {
-    if [ -z "${REPLICATE_API_TOKEN:-}" ] && [ -z "${FAL_KEY:-}" ]; then
-        log_error "No API key found. Set REPLICATE_API_TOKEN or FAL_KEY in .env file"
+    if [ -z "${REPLICATE_API_TOKEN:-}" ] && [ -z "${FAL_KEY:-}" ] && [ -z "${TENCENT_SECRET_ID:-}" ]; then
+        log_error "No API key found. Set one of the following in .env file:"
         log_info "Create .env file in skill directory with:"
-        echo "  REPLICATE_API_TOKEN=\"your_token_here\""
+        echo "  REPLICATE_API_TOKEN=\"your_token_here\"   # Replicate"
         echo "  # or"
-        echo "  FAL_KEY=\"your_fal_key_here\""
+        echo "  FAL_KEY=\"your_fal_key_here\"             # fal.ai"
+        echo "  # or"
+        echo "  TENCENT_SECRET_ID=\"your_id_here\"        # Tencent Hunyuan"
+        echo "  TENCENT_SECRET_KEY=\"your_key_here\""
         exit 1
     fi
 }
@@ -164,23 +167,25 @@ load_character() {
 }
 
 # Auto-detect image provider from env vars + character.yaml
+# Supported providers: replicate, fal, hunyuan
 detect_provider() {
     local explicit="${CLAWPAL_PROVIDER:-}"
-    if [ "$explicit" = "replicate" ] || [ "$explicit" = "fal" ]; then
+    if [ "$explicit" = "replicate" ] || [ "$explicit" = "fal" ] || [ "$explicit" = "hunyuan" ]; then
         echo "$explicit"; return
     fi
     # Check character.yaml preference
     if [ -n "${CHARACTER_FILE:-}" ]; then
         local pref
         pref=$(yaml_get "$CHARACTER_FILE" "image.provider" 2>/dev/null || true)
-        if [ "$pref" = "replicate" ] || [ "$pref" = "fal" ]; then
+        if [ "$pref" = "replicate" ] || [ "$pref" = "fal" ] || [ "$pref" = "hunyuan" ]; then
             echo "$pref"; return
         fi
     fi
-    # Fallback to env var detection
+    # Fallback to env var detection (prefer hunyuan for China users)
+    if [ -n "${TENCENT_SECRET_ID:-}" ] && [ -n "${TENCENT_SECRET_KEY:-}" ]; then echo "hunyuan"; return; fi
     if [ -n "${REPLICATE_API_TOKEN:-}" ]; then echo "replicate"; return; fi
     if [ -n "${FAL_KEY:-}" ]; then echo "fal"; return; fi
-    log_error "No API key found. Set REPLICATE_API_TOKEN or FAL_KEY"
+    log_error "No API key found. Set REPLICATE_API_TOKEN, FAL_KEY, or TENCENT_SECRET_ID/KEY"
     exit 1
 }
 

@@ -40,6 +40,8 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "dependencies": {},
-  "devDependencies": {}
+  "dependencies": {
+    "tencentcloud-sdk-nodejs-aiart": "^4.1.192",
+    "tencentcloud-sdk-nodejs-hunyuan": "^4.1.188"
+  }
 }

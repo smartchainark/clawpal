@@ -289,6 +289,8 @@ async function main() {
     let autoCharacter = null;
     let autoReplicateToken = null;
     let autoFalKey = null;
+    let autoTencentId = null;
+    let autoTencentKey = null;
     let autoReferenceImage = null;
     let autoYes = false;
 
@@ -307,6 +309,12 @@ async function main() {
       } else if (args[i] === "--fal-key" && args[i + 1]) {
         autoFalKey = args[i + 1];
         i++;
+      } else if (args[i] === "--tencent-id" && args[i + 1]) {
+        autoTencentId = args[i + 1];
+        i++;
+      } else if (args[i] === "--tencent-key" && args[i + 1]) {
+        autoTencentKey = args[i + 1];
+        i++;
       } else if (args[i] === "--reference-image" && args[i + 1]) {
         autoReferenceImage = args[i + 1];
         i++;
@@ -319,8 +327,10 @@ Usage: clawpal [options]
 Options:
   --workspace <path>        Install to a specific workspace (default: ~/.openclaw/workspace)
   --character <name>        Character to install: boyfriend, girlfriend, pet, or 1-3
-  --replicate-token <token> Replicate API token (for selfie + video)
-  --fal-key <key>          fal.ai API key (for selfie only)
+  --replicate-token <token> Replicate API token (for selfie + video, overseas)
+  --fal-key <key>          fal.ai API key (for selfie only, overseas)
+  --tencent-id <id>        Tencent Cloud SecretId (for selfie, China)
+  --tencent-key <key>      Tencent Cloud SecretKey (for selfie, China)
   --reference-image <url>  Custom reference image URL
   -y, --yes                Skip all confirmation prompts
   -h, --help               Show this help message
@@ -328,7 +338,8 @@ Options:
 Examples:
   clawpal                                          # Interactive installation
   clawpal --workspace ~/.openclaw/workspace-chiffon  # Install to custom workspace
-  clawpal --character girlfriend --replicate-token r8_xxx --yes  # Automated installation
+  clawpal --character girlfriend --replicate-token r8_xxx --yes  # Overseas
+  clawpal --character pet --tencent-id AKIDxxx --tencent-key xxx --yes  # China
 `);
         rl.close();
         process.exit(0);
@@ -471,7 +482,7 @@ ${c("magenta", "\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25
         chosen.appearance.reference_image = imgUrl;
         logSuccess("Reference image set");
       } else {
-        logInfo("Skipped — selfie will be disabled, voice + video still work");
+        logInfo("Skipped — selfie/video require reference image, voice still works");
       }
     } else if (autoReferenceImage) {
       chosen.appearance = chosen.appearance || {};
@@ -485,25 +496,54 @@ ${c("magenta", "\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25
 
     let replicateKey = autoReplicateToken || "";
     let falKey = autoFalKey || "";
+    let tencentId = autoTencentId || "";
+    let tencentKey = autoTencentKey || "";
 
-    if (!autoReplicateToken && !autoFalKey) {
+    if (!autoReplicateToken && !autoFalKey && !autoTencentId) {
       // Interactive API key input
-      log(`    Replicate token (for selfie + video):`);
-      log(
-        `    ${c("dim", "Get from: https://replicate.com/account/api-tokens")}`
-      );
-      replicateKey = await ask(rl, "    > ");
+      log(`    ${c("yellow", "Choose image model:")} ${c("dim", "(default: Tencent Hunyuan)")}`);
+      log(`    1) Replicate / fal.ai ${c("dim", "(selfie + video)")}`);
+      log(`    2) Tencent Hunyuan ${c("dim", "(selfie only)")}`);
 
-      if (!replicateKey) {
-        log(`\n    fal.ai key (for selfie only — no video):`);
-        log(`    ${c("dim", "Get from: https://fal.ai/dashboard/keys")}`);
-        falKey = await ask(rl, "    > ");
+      log("");
+      const modelChoice = await ask(rl, "    > ") || "2";
+
+      if (modelChoice === "2") {
+        // Tencent Hunyuan
+        log(`\n    ${c("cyan", "Tencent Cloud API credentials (Hunyuan 3.0):")}`);
+        log(`    ${c("dim", "Get from: https://console.cloud.tencent.com/cam/capi")}`);
+        log(`    ${c("yellow", "Note: Hunyuan supports selfie only, no video")}`);
+        log(`\n    SecretId:`);
+        tencentId = await ask(rl, "    > ");
+        log(`    SecretKey:`);
+        tencentKey = await ask(rl, "    > ");
+
+        if (!tencentId || !tencentKey) {
+          logWarn("Tencent credentials not entered — selfie will not work");
+          logInfo("Voice messages still work (Edge TTS is free)");
+        } else {
+          logInfo("Selfie + voice enabled (video requires Replicate)");
+        }
+      } else {
+        // Overseas - Replicate/fal.ai
+        log(`\n    Replicate token (for selfie + video):`);
+        log(`    ${c("dim", "Get from: https://replicate.com/account/api-tokens")}`);
+        replicateKey = await ask(rl, "    > ");
+
+        if (!replicateKey) {
+          log(`\n    fal.ai key (for selfie only — no video):`);
+          log(`    ${c("dim", "Get from: https://fal.ai/dashboard/keys")}`);
+          falKey = await ask(rl, "    > ");
+        }
+
+        if (!replicateKey && !falKey) {
+          logWarn("No API key entered — selfie and video will not work.");
+          logInfo("Voice messages still work (Edge TTS is free).");
+        }
       }
 
-      if (!replicateKey && !falKey) {
-        logWarn("No API key entered — selfie and video will not work.");
-        logInfo("Voice messages still work (Edge TTS is free).");
-        logInfo("You can add keys later in ~/.openclaw/openclaw.json");
+      if (!replicateKey && !falKey && !tencentId) {
+        logInfo("You can add keys later in the .env file");
       }
     } else {
       // Auto mode with provided keys
@@ -512,6 +552,9 @@ ${c("magenta", "\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25
       }
       if (falKey) {
         log(`  ${c("dim", `Using provided fal.ai key`)}`);
+      }
+      if (tencentId) {
+        log(`  ${c("dim", `Using provided Tencent Cloud credentials`)}`);
       }
     }
 
@@ -571,16 +614,22 @@ ${c("magenta", "\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25
     logSuccess("character.yaml written");
 
     // 3c. Create .env file with API keys
-    if (replicateKey || falKey) {
+    if (replicateKey || falKey || tencentId) {
       const envLines = ["# Clawpal v2 Environment Configuration", ""];
       if (replicateKey) {
-        envLines.push("# Replicate API Token (for selfie + video)");
+        envLines.push("# Replicate API Token (for selfie + video, overseas)");
         envLines.push(`REPLICATE_API_TOKEN="${replicateKey}"`);
         envLines.push("");
       }
       if (falKey) {
-        envLines.push("# fal.ai API Key (for selfie)");
+        envLines.push("# fal.ai API Key (for selfie, overseas)");
         envLines.push(`FAL_KEY="${falKey}"`);
+        envLines.push("");
+      }
+      if (tencentId && tencentKey) {
+        envLines.push("# Tencent Cloud (Hunyuan)");
+        envLines.push(`TENCENT_SECRET_ID="${tencentId}"`);
+        envLines.push(`TENCENT_SECRET_KEY="${tencentKey}"`);
         envLines.push("");
       }
       const envPath = path.join(skillDest, ".env");
@@ -696,9 +745,25 @@ ${c("magenta", "\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25
     // ── Summary ─────────────────────────────────────────────────────────
 
     const features = [];
-    if (referenceImage) features.push("selfie");
+    if (referenceImage && (replicateKey || falKey || tencentId)) features.push("selfie");
     features.push("voice");
     if (replicateKey) features.push("video");
+
+    // Show provider info
+    let providerNote = "";
+    if (tencentId && tencentKey) {
+      providerNote = `  Provider: Tencent Hunyuan`;
+    } else if (replicateKey) {
+      providerNote = `  Provider: Replicate`;
+    } else if (falKey) {
+      providerNote = `  Provider: fal.ai`;
+    }
+
+    // Build example prompts based on enabled features
+    const examplePrompts = [];
+    if (features.includes("selfie")) examplePrompts.push('"Send me a selfie"');
+    examplePrompts.push('"Send a voice message saying hello"');
+    if (features.includes("video")) examplePrompts.push('"Make a video of you waving"');
 
     console.log(`
 ${c("green", "\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501")}
@@ -706,12 +771,11 @@ ${c("green", "\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
 ${c("green", "\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501")}
 
 ${c("yellow", "  Try saying to your agent:")}
-    "Send me a selfie"
-    "Send a voice message saying hello"
-    "Make a video of you waving"
+${examplePrompts.map(p => "    " + p).join("\n")}
 
 ${c("dim", `  Installed: ${skillDest}`)}
 ${isWorkspaceLocal ? c("dim", `  Workspace: ${targetWorkspace}`) : ""}
+${providerNote ? c("dim", providerNote) : ""}
 `);
 
     rl.close();

@@ -16,22 +16,27 @@ npx clawpal@latest
 
 3 steps:
 1. **Pick a character** — or create your own
-2. **Enter API key** — Replicate for selfie + video (voice is free)
+2. **Choose model** — Tencent Hunyuan / Replicate / fal.ai
 3. **Done** — start chatting
 
 ### Automated Installation
 
 ```bash
-# Install with all options
+# Tencent Hunyuan
+npx clawpal@latest --character girlfriend --tencent-id AKIDxxx --tencent-key xxx --yes
+
+# Replicate
 npx clawpal@latest --character girlfriend --replicate-token r8_xxx --yes
 
-# Install to custom workspace
+# Custom workspace
 npx clawpal@latest --character girlfriend --workspace ~/.openclaw/workspace-chiffon -y
 
 # Available flags:
 #   --character <name>        boyfriend, girlfriend, pet, or 1-3
-#   --replicate-token <token> Replicate API token
-#   --fal-key <key>          fal.ai API key (alternative to Replicate)
+#   --tencent-id <id>        Tencent Cloud SecretId (selfie)
+#   --tencent-key <key>      Tencent Cloud SecretKey
+#   --replicate-token <token> Replicate API token (selfie + video)
+#   --fal-key <key>          fal.ai API key (selfie)
 #   --reference-image <url>  Custom reference image URL
 #   --workspace <path>       Custom workspace path
 #   -y, --yes                Skip all prompts
@@ -88,7 +93,7 @@ personality:
 ### Selfie
 AI-edited selfies from a reference image. Mirror mode (full-body) and direct mode (close-up).
 
-- **Providers**: Replicate (Flux Kontext Pro) / fal.ai (Grok Imagine Edit)
+- **Providers**: Tencent Hunyuan 3.0 / Replicate (Flux Kontext Pro) / fal.ai (Grok Imagine Edit)
 - **Trigger**: "Send me a selfie", "What are you doing?"
 
 ### Voice
@@ -118,7 +123,10 @@ Scripts generate AND send. Direct and efficient.
 ## Prerequisites
 
 - [OpenClaw](https://github.com/openclaw/openclaw) installed and configured
-- [Replicate](https://replicate.com) account (selfie + video) or [fal.ai](https://fal.ai) (selfie only)
+- Image provider (choose one):
+  - [Tencent Cloud](https://console.cloud.tencent.com/cam/capi) — Hunyuan 3.0 (selfie)
+  - [Replicate](https://replicate.com) — selfie + video
+  - [fal.ai](https://fal.ai) — selfie only
 - Python 3 (Edge TTS auto-installs)
 
 ## Manual Installation
@@ -134,6 +142,24 @@ cp characters/boyfriend.yaml ~/.openclaw/skills/clawpal/character.yaml
 ```
 
 Add this to `~/.openclaw/openclaw.json`:
+
+```json
+{
+  "skills": {
+    "entries": {
+      "clawpal": {
+        "enabled": true,
+        "env": {
+          "TENCENT_SECRET_ID": "your_id",
+          "TENCENT_SECRET_KEY": "your_key"
+        }
+      }
+    }
+  }
+}
+```
+
+Or for overseas users:
 
 ```json
 {
@@ -159,11 +185,12 @@ clawpal/
 │   ├── boyfriend.yaml      # Clawpal — cyber boyfriend
 │   ├── girlfriend.yaml     # Chiffon — cyber girlfriend
 │   └── pet.yaml            # Mochi — cyber pet
-├── scripts/
+├── skill/scripts/
 │   ├── _common.sh          # Shared helpers (YAML parser, retry, polling)
 │   ├── selfie.sh           # → {image_url}
 │   ├── voice.sh            # → {file}
-│   └── video.sh            # → {video_url}
+│   ├── video.sh            # → {video_url}
+│   └── hunyuan-selfie.mjs  # Tencent Hunyuan API
 ├── templates/
 │   ├── identity.md.tpl     # Identity template
 │   └── soul-injection.md.tpl

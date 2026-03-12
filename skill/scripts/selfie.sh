@@ -70,7 +70,34 @@ log_info "Mode: $MODE"
 log_info "Prompt: $EDIT_PROMPT"
 
 # Edit image based on provider
-if [ "$PROVIDER" = "replicate" ]; then
+if [ "$PROVIDER" = "hunyuan" ]; then
+    log_info "Using Tencent Hunyuan 3.0..."
+
+    # Call Node.js script for Hunyuan API (requires HMAC signature)
+    HUNYUAN_SCRIPT="$SCRIPT_DIR/hunyuan-selfie.mjs"
+
+    if [ ! -f "$HUNYUAN_SCRIPT" ]; then
+        log_error "hunyuan-selfie.mjs not found at $HUNYUAN_SCRIPT"
+        exit 1
+    fi
+
+    RESPONSE=$(node "$HUNYUAN_SCRIPT" --prompt "$EDIT_PROMPT" --image "$REFERENCE_IMAGE" 2>&1)
+
+    # Check if response is valid JSON
+    if ! echo "$RESPONSE" | jq -e '.success' >/dev/null 2>&1; then
+        log_error "Hunyuan script failed: $RESPONSE"
+        exit 1
+    fi
+
+    SUCCESS=$(echo "$RESPONSE" | jq -r '.success')
+    if [ "$SUCCESS" != "true" ]; then
+        log_error "Hunyuan failed: $(echo "$RESPONSE" | jq -r '.error // "Unknown"')"
+        exit 1
+    fi
+
+    IMAGE_URL=$(echo "$RESPONSE" | jq -r '.image_url // empty')
+
+elif [ "$PROVIDER" = "replicate" ]; then
     log_info "Using Replicate (Flux Kontext Pro)..."
 
     JSON_PAYLOAD=$(jq -n \

@@ -79,12 +79,13 @@ Edit the character's reference image using AI and send it to the specified chann
 
 ### Providers
 
-| Provider | Model | Env Variable | Priority |
-|----------|-------|-------------|----------|
-| **Replicate** | Flux Kontext Pro | `REPLICATE_API_TOKEN` | 1st |
-| **fal.ai** | Grok Imagine Edit | `FAL_KEY` | 2nd |
+| Provider | Model | Env Variable |
+|----------|-------|-------------|
+| **Hunyuan** | Tencent Hunyuan 3.0 | `TENCENT_SECRET_ID` + `TENCENT_SECRET_KEY` |
+| **Replicate** | Flux Kontext Pro | `REPLICATE_API_TOKEN` |
+| **fal.ai** | Grok Imagine Edit | `FAL_KEY` |
 
-Override with `CLAWPAL_PROVIDER=replicate` or `CLAWPAL_PROVIDER=fal`.
+Override with `CLAWPAL_PROVIDER=hunyuan`, `replicate`, or `fal`.
 
 ### Selfie Modes
 
@@ -252,10 +253,13 @@ scripts/voice.sh "Isn't this place amazing?" "#general"
 
 | Variable | Required For | Description |
 |----------|-------------|-------------|
-| `REPLICATE_API_TOKEN` | selfie (option 1), video | Replicate API token |
-| `FAL_KEY` | selfie (option 2) | fal.ai API key |
-| `CLAWPAL_PROVIDER` | — | Force image provider: `replicate` or `fal` |
+| `TENCENT_SECRET_ID` | selfie (China) | Tencent Cloud SecretId |
+| `TENCENT_SECRET_KEY` | selfie (China) | Tencent Cloud SecretKey |
+| `REPLICATE_API_TOKEN` | selfie + video (overseas) | Replicate API token |
+| `FAL_KEY` | selfie (overseas) | fal.ai API key |
+| `CLAWPAL_PROVIDER` | — | Force provider: `hunyuan`, `replicate`, or `fal` |
 | `CLAWPAL_REFERENCE_IMAGE` | — | Override reference image URL |
+| `TENCENT_REGION` | — | Tencent region (default: `ap-guangzhou`) |
 | `OPENCLAW_GATEWAY_URL` | — | Gateway URL (default: `http://localhost:18789`) |
 | `OPENCLAW_GATEWAY_TOKEN` | — | Gateway auth token |
 
